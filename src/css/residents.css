@@ -142,7 +142,7 @@
 }
 
 .btn-primary {
-  background-color: var(--primary);
+  background-color: #2196F3;
   color: white;
   border: none;
   border-radius: 10px;
@@ -150,8 +150,10 @@
   font-size: 14px;
   font-weight: 600;
   cursor: pointer;
+  box-shadow: 0 4px 12px rgba(33, 150, 243, 0.25);
+  transition: all 0.2s ease;
 }
 
 .btn-primary:hover {
-  background-color: var(--primary-hover);
+  background-color: #1976D2;
 }

@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useApp } from '../context/useApp';
 import '../css/login.css';
 import { User, Lock, Eye, EyeOff } from 'lucide-react';
-import drainageLogo from '../assets/drainage.png';
+import drainageLogo from '../assets/drainage_clean.png';
 
 export default function Login() {
   const [username, setUsername] = useState('');

@@ -1,14 +1,15 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
 
 :root {
-  --primary: #35b5ff;
-  --primary-hover: #1da3ff;
-  --primary-dark: #0056b3;
+  --primary: #2196F3;
+  --primary-hover: #1976D2;
+  --primary-dark: #2196F3;
   --bg-app: #f4f6f8;
-  --bg-sidebar: #35b5ff;
+  --bg-sidebar: #ffffff;
   --bg-card: #ffffff;
   --text-dark: #1e293b;
   --text-muted: #64748b;
+  --text-sidebar: #334155;
   --border: #e2e8f0;
   
   --status-resolved: #10b981;
@@ -37,6 +38,12 @@ body {
   color: var(--text-dark);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+.filter-tab.active {
+  background-color: var(--primary);
+  color: white;
+  border-color: var(--primary);
 }
 
 #root {
@@ -163,7 +170,7 @@ a {
 
 .search-input:focus {
   border-color: var(--primary);
-  box-shadow: 0 0 0 3px rgba(53, 181, 255, 0.15);
+  box-shadow: 0 0 0 3px rgba(33, 150, 243, 0.15);
 }
 
 .search-icon {

@@ -23,27 +23,41 @@ export default function Header() {
     }
   };
 
+  const getSubtitle = (path) => {
+    switch (path) {
+      case '/dashboard':
+        return 'Welcome Back, Admin!';
+      case '/reports':
+        return 'View and manage all submitted reports';
+      case '/map':
+        return 'Visualize report locations on the map';
+      case '/residents':
+        return 'Manage registered residents';
+      case '/notifications':
+        return 'Send notifications to residents';
+      default:
+        return '';
+    }
+  };
+
   return (
     <header className="app-header">
-      <h2 style={{ fontSize: '24px', fontWeight: '700', color: '#1e293b', margin: 0 }}>
-        {getTitle(location.pathname)}
-      </h2>
-      <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-        <div style={{ 
-          width: '36px', 
-          height: '36px', 
-          borderRadius: '50%', 
-          backgroundColor: '#f1f5f9', 
-          display: 'flex', 
-          alignItems: 'center', 
-          justifyContent: 'center', 
-          color: '#64748b' 
-        }}>
-          <User size={18} />
+      <div className="header-title-group">
+        <h2 className="header-title">
+          {getTitle(location.pathname)}
+        </h2>
+        <p className="header-subtitle">
+          {getSubtitle(location.pathname)}
+        </p>
+      </div>
+      <div className="header-user">
+        <div className="header-avatar">
+          <User size={22} />
         </div>
-        <span style={{ fontSize: '14px', fontWeight: '600', color: '#475569' }}>
-          {session?.user?.email || 'Admin'}
-        </span>
+        <div className="header-user-info">
+          <span className="header-user-name">Admin User</span>
+          <span className="header-user-role">Administrator</span>
+        </div>
       </div>
     </header>
   );

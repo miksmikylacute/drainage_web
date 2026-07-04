@@ -18,8 +18,15 @@
 }
 
 @keyframes fadeIn {
-  from { opacity: 0; transform: translateY(12px); }
-  to { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .login-header {
@@ -30,6 +37,7 @@
   width: 120px;
   height: 120px;
   object-fit: contain;
+  margin-top: 20px;
   margin-bottom: 12px;
 }
 
@@ -104,7 +112,7 @@
 .forgot-pwd-link {
   font-size: 13px;
   font-weight: 600;
-  color: #0d6efd;
+  color: #000000;
 }
 
 .forgot-pwd-link:hover {
@@ -122,7 +130,7 @@
   letter-spacing: 0.5px;
   cursor: pointer;
   transition: background-color 0.2s, transform 0.1s;
-  box-shadow: 0 4px 12px rgba(53, 181, 255, 0.25);
+  box-shadow: 0 4px 12px rgba(33, 150, 243, 0.3);
   margin-top: 12px;
 }
 

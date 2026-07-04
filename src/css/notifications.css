@@ -106,7 +106,7 @@
 }
 
 .btn-send-notif {
-  background-color: var(--primary);
+  background-color: #2196F3;
   color: white;
   border: none;
   border-radius: 10px;
@@ -115,11 +115,11 @@
   font-weight: 600;
   cursor: pointer;
   transition: all 0.2s;
-  box-shadow: 0 4px 12px rgba(53, 181, 255, 0.25);
+  box-shadow: 0 4px 12px rgba(33, 150, 243, 0.25);
 }
 
 .btn-send-notif:hover {
-  background-color: var(--primary-hover);
+  background-color: #1976D2;
 }
 
 .btn-send-notif:active {
