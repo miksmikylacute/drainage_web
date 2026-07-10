@@ -23,11 +23,28 @@ export default function Header() {
       case '/map':
         return 'Reports Map View';
       case '/residents':
-        return 'User Management';
+        return 'Residents Management';
       case '/notifications':
         return 'Send Notification';
       default:
         return 'Drainage Monitoring System';
+    }
+  };
+
+  const getSubtitle = (path) => {
+    switch (path) {
+      case '/dashboard':
+        return 'Welcome Back, Admin!';
+      case '/reports':
+        return 'View and manage all submitted reports';
+      case '/map':
+        return 'Visualize report locations on the map';
+      case '/residents':
+        return 'Manage registered users and account status';
+      case '/notifications':
+        return 'Send notifications to residents';
+      default:
+        return '';
     }
   };
 
@@ -68,21 +85,39 @@ export default function Header() {
 
   return (
     <header className="app-header">
-      <h2 style={{ fontSize: '24px', fontWeight: '700', color: '#1e293b', margin: 0 }}>
-        {getTitle(location.pathname)}
-      </h2>
-      <button type="button" className="header-profile-btn" onClick={openProfile}>
+      <div className="header-title-group">
+        <h2 className="header-title">{getTitle(location.pathname)}</h2>
+        <p className="header-subtitle">{getSubtitle(location.pathname)}</p>
+      </div>
+      <div
+        className="header-user"
+        onClick={openProfile}
+        role="button"
+        tabIndex={0}
+        title="Edit Profile"
+        onKeyDown={(event) => {
+          if (event.key === 'Enter' || event.key === ' ') {
+            event.preventDefault();
+            openProfile();
+          }
+        }}
+      >
         <div className="header-avatar">
           {session?.user?.avatarUrl ? (
             <img src={session.user.avatarUrl} alt="" />
           ) : (
-            <User size={18} />
+            <User size={26} />
           )}
         </div>
-        <span style={{ fontSize: '14px', fontWeight: '600', color: '#475569' }}>
-          {session?.user?.fullname || session?.user?.email || 'Admin'}
-        </span>
-      </button>
+        <div className="header-user-info">
+          <span className="header-user-name">
+            {session?.user?.fullname || session?.user?.email || 'Admin'}
+          </span>
+          <span className="header-user-role">
+            {session?.user?.role === 'super_admin' ? 'Super Admin' : 'Administrator'}
+          </span>
+        </div>
+      </div>
 
       {isProfileOpen && (
         <div className="modal-overlay" onClick={() => !isSaving && setIsProfileOpen(false)}>

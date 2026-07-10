@@ -2,10 +2,6 @@ import { useCallback, useEffect, useState } from 'react';
 import { AppContext } from './app-context';
 import { supabase } from '../lib/supabaseClient';
 
-const backendNotConnected = () => {
-  throw new Error('Backend integration is not connected yet.');
-};
-
 const ADMIN_ROLES = new Set(['admin', 'super_admin']);
 
 function mapUserProfile(profile) {
@@ -60,6 +56,19 @@ function mapReport(report) {
   };
 }
 
+function mapNotification(notification) {
+  return {
+    id: notification.id,
+    userId: notification.user_id,
+    reportId: notification.report_id,
+    title: notification.title || 'Notification',
+    message: notification.message || '',
+    isRead: Boolean(notification.is_read),
+    sentBy: notification.sent_by,
+    createdAt: notification.created_at
+  };
+}
+
 function buildSession(authSession, profile) {
   if (!authSession?.user || !profile) return null;
 
@@ -92,7 +101,7 @@ export function AppProvider({ children }) {
 
     try {
       const { data: users, error: usersError } = await supabase
-      .from('users')
+        .from('users')
         .select('id,email,fullname,phone,avatar_url,role,status,created_at')
         .in('role', ['resident', 'admin', 'super_admin'])
         .order('created_at', { ascending: false });
@@ -143,12 +152,26 @@ export function AppProvider({ children }) {
     }
   }, []);
 
+  const loadNotifications = useCallback(async () => {
+    try {
+      const { data: notificationRows, error: notificationsError } = await supabase
+        .from('notifications')
+        .select('id,user_id,report_id,title,message,is_read,sent_by,created_at')
+        .order('created_at', { ascending: false });
+
+      if (notificationsError) throw notificationsError;
+      setNotifications((notificationRows || []).map(mapNotification));
+    } catch (loadError) {
+      setError(loadError.message || 'Unable to load notifications.');
+    }
+  }, []);
+
   const loadDashboardData = useCallback(async () => {
     setLoading(true);
     setError('');
 
     try {
-      const [usersResult, reportsResult] = await Promise.all([
+      const [usersResult, reportsResult, notificationsResult] = await Promise.all([
         supabase
           .from('users')
           .select('id,email,fullname,phone,avatar_url,role,status,created_at')
@@ -175,14 +198,20 @@ export function AppProvider({ children }) {
               avatar_url
             )
           `)
+          .order('created_at', { ascending: false }),
+        supabase
+          .from('notifications')
+          .select('id,user_id,report_id,title,message,is_read,sent_by,created_at')
           .order('created_at', { ascending: false })
       ]);
 
       if (usersResult.error) throw usersResult.error;
       if (reportsResult.error) throw reportsResult.error;
+      if (notificationsResult.error) throw notificationsResult.error;
 
       setResidents((usersResult.data || []).map(mapUserProfile));
       setReports((reportsResult.data || []).map(mapReport));
+      setNotifications((notificationsResult.data || []).map(mapNotification));
     } catch (loadError) {
       setError(loadError.message || 'Unable to load dashboard data.');
     } finally {
@@ -267,6 +296,39 @@ export function AppProvider({ children }) {
     if (!session?.user) return;
     await loadDashboardData();
   }, [loadDashboardData, session?.user]);
+
+  useEffect(() => {
+    if (!session?.user) return undefined;
+
+    const channel = supabase
+      .channel('admin-realtime-sync')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'reports' },
+        () => {
+          loadReports();
+        }
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'notifications' },
+        () => {
+          loadNotifications();
+        }
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'report_logs' },
+        () => {
+          loadReports();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [loadNotifications, loadReports, session?.user]);
 
   const signIn = async (email, password) => {
     if (!email.trim() || !password) {
@@ -434,7 +496,43 @@ export function AppProvider({ children }) {
     if (!user) throw new Error('User not found.');
     return updateUserStatus(id, user.status === 'Active' ? 'Disabled' : 'Active');
   };
-  const sendNotification = async () => backendNotConnected();
+  const sendNotification = async (residentIds, message) => {
+    if (!session?.user) throw new Error('No authenticated admin session.');
+
+    const cleanMessage = `${message || ''}`.trim();
+    const recipients = Array.isArray(residentIds)
+      ? residentIds.filter(Boolean)
+      : [];
+
+    if (recipients.length === 0) {
+      throw new Error('Please select at least one resident.');
+    }
+
+    if (!cleanMessage) {
+      throw new Error('Please enter a message.');
+    }
+
+    const rows = recipients.map((userId) => ({
+      user_id: userId,
+      title: 'Admin Notification',
+      message: cleanMessage,
+      sent_by: session.user.id
+    }));
+
+    const { data, error: notificationError } = await supabase
+      .from('notifications')
+      .insert(rows)
+      .select('id,user_id,report_id,title,message,is_read,sent_by,created_at');
+
+    if (notificationError) throw notificationError;
+
+    setNotifications((prevNotifications) => [
+      ...(data || []).map(mapNotification),
+      ...prevNotifications
+    ]);
+
+    return data;
+  };
 
   const value = {
     reports,

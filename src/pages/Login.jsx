@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useApp } from '../context/useApp';
 import '../css/login.css';
 import { User, Lock, Eye, EyeOff } from 'lucide-react';
-import drainageLogo from '../assets/drainage.png';
+import drainageLogo from '../assets/drainage_clean.png';
 
 function getFriendlyAuthMessage(error, fallback) {
   const message = String(error?.message || error || '').toLowerCase();

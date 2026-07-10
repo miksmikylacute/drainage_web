@@ -1,31 +1,15 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useApp } from '../context/useApp';
+import {
+  buildReportMarkerSvg,
+  getReportStatusColor,
+  hasReportCoordinates,
+  MAUBAN_BOUNDS,
+  MAUBAN_CENTER,
+  REPORT_STATUS_LEGEND,
+} from '../lib/reportMapMarkers';
 import '../css/map.css';
-
-// Mauban, Quezon – approximate bounding box and center
-const MAUBAN_CENTER = [14.1927, 121.7305];
-const MAUBAN_BOUNDS = [
-  [14.0900, 121.6400], // SW corner
-  [14.3200, 121.8400], // NE corner
-];
-
-// Status → marker colour
-const STATUS_COLOR = {
-  Pending: '#64748b',
-  Resolved: '#10b981',
-  'In Progress': '#f59e0b',
-  Rejected: '#ef4444',
-};
-
-function buildMarkerSvg(color) {
-  return `
-    <svg xmlns="http://www.w3.org/2000/svg" width="32" height="42" viewBox="0 0 32 42">
-      <path d="M16 0C7.163 0 0 7.163 0 16c0 10.667 16 26 16 26S32 26.667 32 16C32 7.163 24.837 0 16 0z"
-        fill="${color}" stroke="white" stroke-width="2"/>
-      <circle cx="16" cy="16" r="6" fill="white" fill-opacity="0.85"/>
-    </svg>`;
-}
 
 export default function MapView() {
   const navigate = useNavigate();
@@ -33,20 +17,20 @@ export default function MapView() {
   const mapRef = useRef(null);
   const leafletMapRef = useRef(null);
   const markersRef = useRef([]);
+  const [mapReady, setMapReady] = useState(false);
 
   // Initialise Leaflet once
   useEffect(() => {
     // Dynamic import so Leaflet (which touches window/document) loads only client-side
-    let L;
-    let map;
+    let cancelled = false;
 
     async function init() {
-      L = (await import('leaflet')).default;
+      const L = (await import('leaflet')).default;
       await import('leaflet/dist/leaflet.css');
 
-      if (leafletMapRef.current) return; // already initialised
+      if (cancelled || leafletMapRef.current || !mapRef.current) return;
 
-      map = L.map(mapRef.current, {
+      const map = L.map(mapRef.current, {
         center: MAUBAN_CENTER,
         zoom: 13,
         minZoom: 11,
@@ -56,6 +40,8 @@ export default function MapView() {
       });
 
       leafletMapRef.current = map;
+      setMapReady(true);
+      setTimeout(() => map.invalidateSize(), 0);
 
       // OpenStreetMap tile layer (free, no key needed)
       L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -76,9 +62,11 @@ export default function MapView() {
     init();
 
     return () => {
+      cancelled = true;
       if (leafletMapRef.current) {
         leafletMapRef.current.remove();
         leafletMapRef.current = null;
+        setMapReady(false);
       }
     };
   }, []);
@@ -88,21 +76,19 @@ export default function MapView() {
     async function syncMarkers() {
       const L = (await import('leaflet')).default;
       const map = leafletMapRef.current;
-      if (!map) return;
+      if (!map || !mapReady) return;
 
       // Clear old markers
       markersRef.current.forEach((m) => m.remove());
       markersRef.current = [];
 
-      const geoReports = reports.filter(
-        (r) => r.latitude != null && r.longitude != null
-      );
+      const geoReports = reports.filter(hasReportCoordinates);
 
       geoReports.forEach((report) => {
-        const color = STATUS_COLOR[report.status] ?? '#6b7280';
+        const color = getReportStatusColor(report.status);
 
         const icon = L.divIcon({
-          html: buildMarkerSvg(color),
+          html: buildReportMarkerSvg(color),
           className: 'map-custom-icon',
           iconSize: [32, 42],
           iconAnchor: [16, 42],
@@ -134,15 +120,30 @@ export default function MapView() {
 
         markersRef.current.push(marker);
       });
+
+      if (geoReports.length > 0) {
+        const bounds = L.latLngBounds(
+          geoReports.map((report) => [report.latitude, report.longitude])
+        );
+        map.fitBounds(bounds.pad(0.2), { maxZoom: 17 });
+      }
     }
 
     syncMarkers();
-  }, [reports, navigate]);
+  }, [reports, navigate, mapReady]);
 
   return (
     <div className="map-page-wrapper">
       <div className="map-header">
         <p className="map-page-sub">Showing drainage reports in Mauban, Quezon</p>
+        <div className="map-legend" aria-label="Report status legend">
+          {REPORT_STATUS_LEGEND.map((item) => (
+            <span key={item.status} className="map-legend-item">
+              <span className="map-legend-dot" style={{ backgroundColor: item.color }} />
+              {item.label}
+            </span>
+          ))}
+        </div>
       </div>
 
       <div className="map-leaflet-card">
