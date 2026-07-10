@@ -12,6 +12,7 @@ const MAUBAN_BOUNDS = [
 
 // Status → marker colour
 const STATUS_COLOR = {
+  Pending: '#64748b',
   Resolved: '#10b981',
   'In Progress': '#f59e0b',
   Rejected: '#ef4444',
@@ -116,7 +117,7 @@ export default function MapView() {
             <div class="lf-popup-loc">${report.location ?? ''}</div>
             <div class="lf-popup-meta">
               <span class="lf-popup-date">${report.dateSubmitted ?? ''}</span>
-              <span class="lf-status lf-status-${(report.status ?? '').toLowerCase().replace(' ', '')}">${report.status ?? ''}</span>
+              <span class="lf-status lf-status-${report.statusClass ?? ''}">${report.status ?? ''}</span>
             </div>
             <button class="lf-popup-btn" data-id="${report.displayId ?? report.id}">View details</button>
           </div>`;

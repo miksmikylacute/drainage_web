@@ -17,7 +17,7 @@ export default function Reports() {
   const [remarks, setRemarks] = useState('');
   const [statusVal, setStatusVal] = useState('');
 
-  const tabs = ['All', 'In Progress', 'Resolved', 'Rejected'];
+  const tabs = ['All', 'Pending', 'In Progress', 'Resolved', 'Rejected'];
 
   const handleOpenEdit = (report) => {
     setEditingReport(report);
@@ -119,7 +119,7 @@ export default function Reports() {
                     <td>{report.issue}</td>
                     <td>{report.location}</td>
                     <td>
-                      <span className={`status-badge ${report.status.toLowerCase().replace(' ', '')}`}>
+                      <span className={`status-badge ${report.statusClass}`}>
                         {report.status}
                       </span>
                     </td>
@@ -192,7 +192,7 @@ export default function Reports() {
                 </div>
                 <div className="report-detail-row" style={{ marginBottom: 0 }}>
                   <span className="report-detail-label">Current Status</span>
-                  <span className={`report-detail-value status-${editingReport.status.toLowerCase().replace(' ', '')}`}>
+                  <span className={`report-detail-value status-${editingReport.statusClass}`}>
                     {editingReport.status}
                   </span>
                 </div>
@@ -233,6 +233,7 @@ export default function Reports() {
                     onChange={(e) => setStatusVal(e.target.value)}
                   >
                     <option value="">Select status</option>
+                    <option value="Pending">Pending</option>
                     <option value="In Progress">In Progress</option>
                     <option value="Resolved">Resolved</option>
                     <option value="Rejected">Rejected</option>

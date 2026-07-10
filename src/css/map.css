@@ -126,6 +126,7 @@
   text-transform: capitalize;
 }
 .lf-status-resolved    { background: #d1fae5; color: #065f46; }
+.lf-status-pending     { background: #f1f5f9; color: #334155; }
 .lf-status-inprogress  { background: #fef3c7; color: #92400e; }
 .lf-status-rejected    { background: #fee2e2; color: #991b1b; }
 

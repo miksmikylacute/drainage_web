@@ -20,6 +20,46 @@ function mapUserProfile(profile) {
   };
 }
 
+function statusClass(status) {
+  return `${status || ''}`.toLowerCase().replace(/\s+/g, '');
+}
+
+function formatDate(value) {
+  if (!value) return 'N/A';
+  return new Intl.DateTimeFormat('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit'
+  }).format(new Date(value));
+}
+
+function mapReport(report) {
+  const resident = report.users || {};
+  const id = report.id;
+
+  return {
+    id,
+    displayId: `DR-${id.slice(0, 8).toUpperCase()}`,
+    issue: report.title || 'Drainage Issue',
+    title: report.title || 'Drainage Issue',
+    location: report.location_label || 'Pinned location',
+    status: report.status || 'Pending',
+    statusClass: statusClass(report.status),
+    dateSubmitted: formatDate(report.created_at),
+    submittedBy: resident.fullname || 'Unknown resident',
+    contactNo: resident.phone || '',
+    residentEmail: resident.email || '',
+    description: report.description || '',
+    imageUrl: report.image_url || '',
+    latitude: typeof report.latitude === 'number' ? report.latitude : Number(report.latitude),
+    longitude: typeof report.longitude === 'number' ? report.longitude : Number(report.longitude),
+    createdAt: report.created_at,
+    updatedAt: report.updated_at
+  };
+}
+
 function buildSession(authSession, profile) {
   if (!authSession?.user || !profile) return null;
 
@@ -66,6 +106,90 @@ export function AppProvider({ children }) {
     }
   }, []);
 
+  const loadReports = useCallback(async () => {
+    setLoading(true);
+    setError('');
+
+    try {
+      const { data: reportRows, error: reportsError } = await supabase
+        .from('reports')
+        .select(`
+          id,
+          user_id,
+          title,
+          description,
+          image_url,
+          latitude,
+          longitude,
+          location_label,
+          status,
+          created_at,
+          updated_at,
+          users:user_id (
+            fullname,
+            phone,
+            email,
+            avatar_url
+          )
+        `)
+        .order('created_at', { ascending: false });
+
+      if (reportsError) throw reportsError;
+      setReports((reportRows || []).map(mapReport));
+    } catch (loadError) {
+      setError(loadError.message || 'Unable to load reports.');
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  const loadDashboardData = useCallback(async () => {
+    setLoading(true);
+    setError('');
+
+    try {
+      const [usersResult, reportsResult] = await Promise.all([
+        supabase
+          .from('users')
+          .select('id,email,fullname,phone,avatar_url,role,status,created_at')
+          .in('role', ['resident', 'admin', 'super_admin'])
+          .order('created_at', { ascending: false }),
+        supabase
+          .from('reports')
+          .select(`
+            id,
+            user_id,
+            title,
+            description,
+            image_url,
+            latitude,
+            longitude,
+            location_label,
+            status,
+            created_at,
+            updated_at,
+            users:user_id (
+              fullname,
+              phone,
+              email,
+              avatar_url
+            )
+          `)
+          .order('created_at', { ascending: false })
+      ]);
+
+      if (usersResult.error) throw usersResult.error;
+      if (reportsResult.error) throw reportsResult.error;
+
+      setResidents((usersResult.data || []).map(mapUserProfile));
+      setReports((reportsResult.data || []).map(mapReport));
+    } catch (loadError) {
+      setError(loadError.message || 'Unable to load dashboard data.');
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
   const loadAdminSession = useCallback(async (authSession) => {
     if (!authSession?.user) {
       setSession(null);
@@ -98,9 +222,9 @@ export function AppProvider({ children }) {
 
     const nextSession = buildSession(authSession, profile);
     setSession(nextSession);
-    await loadUsers();
+    await loadDashboardData();
     return nextSession;
-  }, [loadUsers]);
+  }, [loadDashboardData]);
 
   useEffect(() => {
     let isMounted = true;
@@ -141,8 +265,8 @@ export function AppProvider({ children }) {
 
   const refreshData = useCallback(async () => {
     if (!session?.user) return;
-    await loadUsers();
-  }, [loadUsers, session?.user]);
+    await loadDashboardData();
+  }, [loadDashboardData, session?.user]);
 
   const signIn = async (email, password) => {
     if (!email.trim() || !password) {
@@ -233,12 +357,24 @@ export function AppProvider({ children }) {
   };
 
   const updateReportDetails = async (id, newStatus, newRemarks) => {
+    const { data, error: updateError } = await supabase.rpc('update_report_status', {
+      p_report_id: id,
+      p_new_status: newStatus,
+      p_remarks: newRemarks || null
+    });
+
+    if (updateError) throw updateError;
+
+    const updatedStatus = data?.status || newStatus;
+
     setReports((prevReports) =>
       prevReports.map((report) =>
-        report.id === id ? { ...report, status: newStatus, remarks: newRemarks } : report
+        report.id === id
+          ? { ...report, status: updatedStatus, statusClass: statusClass(updatedStatus), remarks: newRemarks }
+          : report
       )
     );
-    backendNotConnected();
+    await loadReports();
   };
 
   const createUser = async ({ name, contact, email, password, role }) => {

@@ -91,6 +91,10 @@
   color: var(--status-inprogress);
 }
 
+.report-detail-value.status-pending {
+  color: var(--status-pending);
+}
+
 .report-detail-value.status-resolved {
   color: var(--status-resolved);
 }

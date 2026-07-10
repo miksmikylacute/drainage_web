@@ -8,20 +8,23 @@ export default function Dashboard() {
 
   // Calculate statistics dynamically
   const totalReports = reports.length;
+  const pendingCount = reports.filter(r => r.status === 'Pending').length;
   const inProgressCount = reports.filter(r => r.status === 'In Progress').length;
   const resolvedCount = reports.filter(r => r.status === 'Resolved').length;
   const rejectedCount = reports.filter(r => r.status === 'Rejected').length;
 
   // Pie chart calculation
-  const totalForPie = inProgressCount + resolvedCount + rejectedCount || 1;
+  const totalForPie = pendingCount + inProgressCount + resolvedCount + rejectedCount || 1;
+  const pctPending = Math.round((pendingCount / totalForPie) * 100);
   const pctInProgress = Math.round((inProgressCount / totalForPie) * 100);
   const pctResolved = Math.round((resolvedCount / totalForPie) * 100);
-  const pctRejected = 100 - pctInProgress - pctResolved; // ensures total is exactly 100%
+  const pctRejected = 100 - pctPending - pctInProgress - pctResolved;
 
   const conicGradient = `conic-gradient(
-    #f59e0b 0% ${pctInProgress}%,
-    #10b981 ${pctInProgress}% ${pctInProgress + pctResolved}%,
-    #ef4444 ${pctInProgress + pctResolved}% 100%
+    #64748b 0% ${pctPending}%,
+    #f59e0b ${pctPending}% ${pctPending + pctInProgress}%,
+    #10b981 ${pctPending + pctInProgress}% ${pctPending + pctInProgress + pctResolved}%,
+    #ef4444 ${pctPending + pctInProgress + pctResolved}% 100%
   )`;
 
   // Limit recent reports table to latest 4 reports
@@ -44,6 +47,10 @@ export default function Dashboard() {
         <div className="card stat-card total">
           <span className="stat-title">Total Reports</span>
           <span className="stat-value">{totalReports}</span>
+        </div>
+        <div className="card stat-card">
+          <span className="stat-title">Pending</span>
+          <span className="stat-value">{pendingCount}</span>
         </div>
         <div className="card stat-card inprogress">
           <span className="stat-title">In Progress</span>
@@ -89,7 +96,7 @@ export default function Dashboard() {
                       <td>{report.issue}</td>
                       <td>{report.location}</td>
                       <td>
-                        <span className={`status-badge ${report.status.toLowerCase().replace(' ', '')}`}>
+                        <span className={`status-badge ${report.statusClass}`}>
                           {report.status}
                         </span>
                       </td>
@@ -128,6 +135,14 @@ export default function Dashboard() {
             </div>
 
             <div className="pie-legend">
+              <div className="legend-item">
+                <div className="legend-label-group">
+                  <div className="legend-color" style={{ backgroundColor: '#64748b' }} />
+                  <span>Pending</span>
+                </div>
+                <span className="legend-value">{pendingCount} ({pctPending}%)</span>
+              </div>
+
               <div className="legend-item">
                 <div className="legend-label-group">
                   <div className="legend-color inprogress" />
