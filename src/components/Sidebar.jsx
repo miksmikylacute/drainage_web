@@ -12,7 +12,7 @@ export default function Sidebar() {
     { name: 'Dashboard', path: '/dashboard', icon: Home },
     { name: 'Reports', path: '/reports', icon: FileText },
     { name: 'Map', path: '/map', icon: MapPin },
-    { name: 'Residents', path: '/residents', icon: Users },
+    { name: 'User Management', path: '/residents', icon: Users },
     { name: 'Notification', path: '/notifications', icon: Bell },
   ];
 
