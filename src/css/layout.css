@@ -56,11 +56,22 @@
   display: flex;
   align-items: center;
   gap: 12px;
+  padding: 8px 12px;
+  border-radius: 12px;
+  transition: background-color 0.2s, opacity 0.2s;
+}
+
+.header-user:hover {
+  background-color: rgba(0, 0, 0, 0.05);
+}
+
+.header-user:active {
+  opacity: 0.7;
 }
 
 .header-avatar {
-  width: 44px;
-  height: 44px;
+  width: 52px;
+  height: 52px;
   border-radius: 50%;
   background-color: #e2e8f0;
   display: flex;
@@ -69,6 +80,7 @@
   color: #475569;
   flex-shrink: 0;
 }
+
 
 .header-user-info {
   display: flex;
@@ -239,4 +251,93 @@
 
 .sidebar-footer .sidebar-item svg {
   color: inherit;
+}
+
+/* ---- Logout Modal ---- */
+.logout-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background-color: rgba(0, 0, 0, 0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding-left: 280px; /* Centers the modal relative to the dashboard area */
+  z-index: 9999;
+  animation: fadeInModal 0.2s ease-out;
+}
+
+.logout-modal-card {
+  background: white;
+  width: 100%;
+  max-width: 400px;
+  padding: 32px 24px;
+  border-radius: 20px;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+  text-align: center;
+  animation: slideUpModal 0.2s ease-out;
+}
+
+.logout-modal-title {
+  font-size: 18px;
+  font-weight: 700;
+  color: #000;
+  margin-bottom: 8px;
+}
+
+.logout-modal-text {
+  font-size: 14px;
+  color: #64748b;
+  margin-bottom: 24px;
+}
+
+.logout-modal-actions {
+  display: flex;
+  justify-content: center;
+  gap: 16px;
+}
+
+.logout-modal-cancel,
+.logout-modal-confirm {
+  flex: 1;
+  padding: 12px 0;
+  font-size: 15px;
+  font-weight: 600;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-family: inherit;
+}
+
+.logout-modal-cancel {
+  background: white;
+  color: #000;
+  border: 1.5px solid #d1d5db;
+}
+
+.logout-modal-cancel:hover {
+  background: #f8fafc;
+}
+
+.logout-modal-confirm {
+  background: #2196F3;
+  color: white;
+  border: none;
+  box-shadow: 0 4px 12px rgba(33, 150, 243, 0.3);
+}
+
+.logout-modal-confirm:hover {
+  background: #1976D2;
+}
+
+@keyframes fadeInModal {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideUpModal {
+  from { opacity: 0; transform: translateY(15px); }
+  to { opacity: 1; transform: translateY(0); }
 }

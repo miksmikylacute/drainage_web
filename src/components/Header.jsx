@@ -1,9 +1,10 @@
-import { useLocation } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { User } from 'lucide-react';
 import { useApp } from '../context/useApp';
 
 export default function Header() {
   const location = useLocation();
+  const navigate = useNavigate();
   const { session } = useApp();
 
   const getTitle = (path) => {
@@ -18,6 +19,8 @@ export default function Header() {
         return 'Residents Management';
       case '/notifications':
         return 'Send Notification';
+      case '/profile':
+        return 'Edit Profile';
       default:
         return 'Drainage Monitoring System';
     }
@@ -50,9 +53,14 @@ export default function Header() {
           {getSubtitle(location.pathname)}
         </p>
       </div>
-      <div className="header-user">
+      <div
+        className="header-user"
+        onClick={() => navigate('/profile')}
+        style={{ cursor: 'pointer' }}
+        title="Edit Profile"
+      >
         <div className="header-avatar">
-          <User size={22} />
+          <User size={26} />
         </div>
         <div className="header-user-info">
           <span className="header-user-name">Admin User</span>

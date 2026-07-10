@@ -1,3 +1,5 @@
+import { useState } from 'react';
+import { createPortal } from 'react-dom';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Home, FileText, MapPin, Users, Bell, LogOut } from 'lucide-react';
 import { useApp } from '../context/useApp';
@@ -7,6 +9,7 @@ export default function Sidebar() {
   const location = useLocation();
   const navigate = useNavigate();
   const { signOut } = useApp();
+  const [showLogoutModal, setShowLogoutModal] = useState(false);
 
   const menuItems = [
     { name: 'Dashboard', path: '/dashboard', icon: Home },
@@ -16,9 +19,17 @@ export default function Sidebar() {
     { name: 'Notification', path: '/notifications', icon: Bell },
   ];
 
-  const handleLogout = async () => {
+  const handleLogoutClick = () => {
+    setShowLogoutModal(true);
+  };
+
+  const confirmLogout = async () => {
     await signOut();
     navigate('/');
+  };
+
+  const cancelLogout = () => {
+    setShowLogoutModal(false);
   };
 
   return (
@@ -54,7 +65,7 @@ export default function Sidebar() {
 
           <div className="sidebar-footer">
             <button
-              onClick={handleLogout}
+              onClick={handleLogoutClick}
               className="sidebar-item"
               style={{ width: '100%', background: 'none', border: 'none', textAlign: 'left', cursor: 'pointer', fontFamily: 'inherit', fontSize: 'inherit' }}
             >
@@ -64,6 +75,26 @@ export default function Sidebar() {
           </div>
         </nav>
       </div>
+
+      {showLogoutModal && createPortal(
+        <div className="logout-modal-overlay">
+          <div className="logout-modal-card">
+            <h3 className="logout-modal-title">Are you sure you want to log out?</h3>
+            <p className="logout-modal-text">
+              You will need to log in again to access the system.
+            </p>
+            <div className="logout-modal-actions">
+              <button className="logout-modal-cancel" onClick={cancelLogout}>
+                Cancel
+              </button>
+              <button className="logout-modal-confirm" onClick={confirmLogout}>
+                Logout
+              </button>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
     </aside>
   );
 }
