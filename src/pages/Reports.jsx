@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useApp } from '../context/useApp';
-import { Search, X, Edit, ChevronLeft } from 'lucide-react';
+import { Search, X, Edit, ChevronLeft, Trash2 } from 'lucide-react';
 import cloggedDrainImg from '../assets/clogged_drain.png';
 import '../css/reports.css';
 
@@ -12,7 +12,9 @@ export default function Reports() {
     reportRemarks,
     loading,
     error,
+    session,
     updateReportDetails,
+    deleteReport,
     addReportRemark
   } = useApp();
   const [searchParams] = useSearchParams();
@@ -37,6 +39,7 @@ export default function Reports() {
   const currentReportRemarks = currentEditingReport
     ? reportRemarks.filter((remark) => remark.reportId === currentEditingReport.id)
     : [];
+  const isSuperAdmin = session?.user?.role === 'super_admin';
 
   const handleOpenEdit = (report) => {
     setEditingReport(report);
@@ -73,6 +76,25 @@ export default function Reports() {
       setRemarks('');
     } catch (remarkError) {
       alert(remarkError.message || 'Unable to save remark.');
+    }
+  };
+
+  const handleDeleteReport = async () => {
+    if (!currentEditingReport) return;
+
+    const shouldDelete = window.confirm(
+      `Delete ${currentEditingReport.displayId}? This will permanently remove the report from the database, resident mobile app, report timeline, notifications, remarks, and admin map.`
+    );
+
+    if (!shouldDelete) return;
+
+    try {
+      await deleteReport(currentEditingReport.id);
+      setShowRemarksPopup(false);
+      setShowImagePopup(false);
+      setEditingReport(null);
+    } catch (deleteError) {
+      alert(deleteError.message || 'Unable to delete report.');
     }
   };
 
@@ -327,6 +349,16 @@ export default function Reports() {
 
               {/* Submit Buttons */}
               <div className="notif-btn-row report-modal-actions">
+                {isSuperAdmin && (
+                  <button
+                    type="button"
+                    className="btn-remove-report"
+                    onClick={handleDeleteReport}
+                  >
+                    <Trash2 size={16} />
+                    <span>Remove Report</span>
+                  </button>
+                )}
                 <button 
                   type="button" 
                   className="btn-cancel-notif" 

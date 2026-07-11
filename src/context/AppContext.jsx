@@ -553,6 +553,35 @@ export function AppProvider({ children }) {
     await loadReportLogs();
   };
 
+  const deleteReport = async (id) => {
+    if (session?.user?.role !== 'super_admin') {
+      throw new Error('Only a super admin can delete reports.');
+    }
+
+    const { error: deleteError } = await supabase
+      .from('reports')
+      .delete()
+      .eq('id', id);
+
+    if (deleteError) throw deleteError;
+
+    setReports((prevReports) => prevReports.filter((report) => report.id !== id));
+    setReportLogs((prevLogs) => prevLogs.filter((log) => log.reportId !== id));
+    setReportRemarks((prevRemarks) =>
+      prevRemarks.filter((remark) => remark.reportId !== id)
+    );
+    setNotifications((prevNotifications) =>
+      prevNotifications.filter((notification) => notification.reportId !== id)
+    );
+
+    await Promise.all([
+      loadReports(),
+      loadReportLogs(),
+      loadReportRemarks(),
+      loadNotifications()
+    ]);
+  };
+
   const addReportRemark = async (reportId, remark) => {
     if (!session?.user) throw new Error('No authenticated admin session.');
 
@@ -699,6 +728,7 @@ export function AppProvider({ children }) {
     resetPassword,
     updateCurrentProfile,
     updateReportDetails,
+    deleteReport,
     addReportRemark,
     createUser,
     addResident,

@@ -632,3 +632,26 @@
 .report-modal-content .btn-send-notif:hover {
   background-color: #1976D2;
 }
+
+.report-modal-content .btn-remove-report {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin-right: auto;
+  background-color: #dc2626;
+  color: white;
+  border: none;
+  border-radius: 10px;
+  min-width: 166px;
+  padding: 12px 22px;
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s;
+  box-shadow: 0 4px 12px rgba(220, 38, 38, 0.22);
+}
+
+.report-modal-content .btn-remove-report:hover {
+  background-color: #b91c1c;
+}
