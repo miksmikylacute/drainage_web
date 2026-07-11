@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useApp } from '../context/useApp';
-import { ChevronRight, CircleDot, Users } from 'lucide-react';
+import { ChevronRight, CircleDot, ShieldCheck, UserCog, Users } from 'lucide-react';
 import {
   buildReportMarkerSvg,
   getReportStatusColor,
@@ -101,7 +101,7 @@ function DashboardMiniMap({ reports }) {
 }
 
 export default function Dashboard() {
-  const { reports, residents, loading, error } = useApp();
+  const { reports, residents, session, loading, error } = useApp();
 
   // Calculate statistics dynamically
   const totalReports = reports.length;
@@ -124,9 +124,20 @@ export default function Dashboard() {
     #8b5cf6 ${pctPending + pctInProgress + pctResolved}% 100%
   )`;
 
-  // Limit recent reports table to latest 4 reports
-  const recentReports = reports.slice(0, 4);
+  const statusChartItems = [
+    { label: 'Pending', count: pendingCount, pct: pctPending, color: '#ef4444' },
+    { label: 'In Progress', count: inProgressCount, pct: pctInProgress, color: '#2563eb' },
+    { label: 'Resolved', count: resolvedCount, pct: pctResolved, color: '#10b981' },
+    { label: 'Rejected', count: rejectedCount, pct: pctRejected, color: '#8b5cf6' }
+  ];
+
+  // Limit recent reports table to latest 3 reports
+  const recentReports = reports.slice(0, 3);
+  const residentUsers = residents.filter((user) => user.role === 'resident');
+  const adminUsers = residents.filter((user) => user.role === 'admin');
+  const superAdminUsers = residents.filter((user) => user.role === 'super_admin');
   const totalUsers = residents.length;
+  const isSuperAdmin = session?.user?.role === 'super_admin';
 
   if (loading) {
     return <div className="card" style={{ padding: '30px', color: '#64748b' }}>Loading dashboard data...</div>;
@@ -187,9 +198,9 @@ export default function Dashboard() {
           <table className="custom-table">
             <thead>
               <tr>
-                <th>ID</th>
-                <th>Issue</th>
+                <th>Title</th>
                 <th>Location</th>
+                <th>Reporter</th>
                 <th>Status</th>
                 <th>Date Submitted</th>
               </tr>
@@ -198,9 +209,9 @@ export default function Dashboard() {
               {recentReports.length > 0 ? (
                 recentReports.map((report) => (
                   <tr key={report.id}>
-                    <td>{report.displayId}</td>
                     <td>{report.issue}</td>
                     <td>{report.location}</td>
+                    <td>{report.submittedBy || 'Anonymous'}</td>
                     <td>
                       <span className={`status-badge ${report.statusClass}`}>
                         {report.status}
@@ -276,6 +287,26 @@ export default function Dashboard() {
               </div>
             </div>
           </div>
+
+          <div className="status-bars" aria-label="Report status bar chart">
+            {statusChartItems.map((item) => (
+              <div key={item.label} className="status-bar-row">
+                <div className="status-bar-meta">
+                  <span>{item.label}</span>
+                  <strong>{item.count}</strong>
+                </div>
+                <div className="status-bar-track">
+                  <div
+                    className="status-bar-fill"
+                    style={{
+                      width: `${Math.max(item.pct, item.count > 0 ? 5 : 0)}%`,
+                      backgroundColor: item.color
+                    }}
+                  />
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
 
         {/* Reports by Location */}
@@ -309,8 +340,8 @@ export default function Dashboard() {
               <div className="system-info-icon users-icon">
                 <Users size={20} />
               </div>
-              <span className="system-info-label">Total Users</span>
-              <span className="system-info-value">{totalUsers}</span>
+              <span className="system-info-label">Residents</span>
+              <span className="system-info-value">{residentUsers.length}</span>
             </div>
             <div className="system-info-item">
               <div className="system-info-dot">
@@ -321,6 +352,41 @@ export default function Dashboard() {
                 {reports.filter((report) => report.latitude != null && report.longitude != null).length}
               </span>
             </div>
+            {isSuperAdmin && (
+              <>
+                <div className="system-info-item">
+                  <div className="system-info-icon admins-icon">
+                    <ShieldCheck size={20} />
+                  </div>
+                  <span className="system-info-label">Admins</span>
+                  <span className="system-info-value">{adminUsers.length}</span>
+                </div>
+                <div className="system-info-item">
+                  <div className="system-info-icon super-admins-icon">
+                    <UserCog size={20} />
+                  </div>
+                  <span className="system-info-label">Super Admin</span>
+                  <span className="system-info-value">{superAdminUsers.length}</span>
+                </div>
+                <div className="super-admin-actions">
+                  <Link to="/residents" className="super-admin-action">
+                    Manage Accounts <ChevronRight size={16} />
+                  </Link>
+                  <Link to="/notifications" className="super-admin-action">
+                    Send Notice <ChevronRight size={16} />
+                  </Link>
+                </div>
+              </>
+            )}
+            {!isSuperAdmin && (
+              <div className="system-info-item">
+                <div className="system-info-icon users-icon">
+                  <Users size={20} />
+                </div>
+                <span className="system-info-label">Total Users</span>
+                <span className="system-info-value">{totalUsers}</span>
+              </div>
+            )}
           </div>
         </div>
       </div>

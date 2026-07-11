@@ -6,7 +6,15 @@ import cloggedDrainImg from '../assets/clogged_drain.png';
 import '../css/reports.css';
 
 export default function Reports() {
-  const { reports, loading, error, updateReportDetails } = useApp();
+  const {
+    reports,
+    reportLogs,
+    reportRemarks,
+    loading,
+    error,
+    updateReportDetails,
+    addReportRemark
+  } = useApp();
   const [searchParams] = useSearchParams();
   const initialSearch = searchParams.get('search') || '';
   const [searchQuery, setSearchQuery] = useState(initialSearch);
@@ -16,13 +24,26 @@ export default function Reports() {
   const [editingReport, setEditingReport] = useState(null);
   const [remarks, setRemarks] = useState('');
   const [statusVal, setStatusVal] = useState('');
+  const [showRemarksPopup, setShowRemarksPopup] = useState(false);
+  const [showImagePopup, setShowImagePopup] = useState(false);
 
   const tabs = ['All', 'Pending', 'In Progress', 'Resolved', 'Rejected'];
+  const currentEditingReport = editingReport
+    ? reports.find((report) => report.id === editingReport.id) || editingReport
+    : null;
+  const currentReportLogs = currentEditingReport
+    ? reportLogs.filter((log) => log.reportId === currentEditingReport.id)
+    : [];
+  const currentReportRemarks = currentEditingReport
+    ? reportRemarks.filter((remark) => remark.reportId === currentEditingReport.id)
+    : [];
 
   const handleOpenEdit = (report) => {
     setEditingReport(report);
     setRemarks(report.remarks || '');
     setStatusVal(report.status);
+    setShowRemarksPopup(false);
+    setShowImagePopup(false);
   };
 
   const handleSave = async (e) => {
@@ -33,10 +54,25 @@ export default function Reports() {
     }
 
     try {
-      await updateReportDetails(editingReport.id, statusVal, remarks);
+      await updateReportDetails(editingReport.id, statusVal, null);
+      if (remarks.trim()) {
+        await addReportRemark(editingReport.id, remarks);
+        setRemarks('');
+      }
       setEditingReport(null);
     } catch (saveError) {
       alert(saveError.message || 'Unable to update report.');
+    }
+  };
+
+  const handleAddRemark = async () => {
+    if (!currentEditingReport) return;
+
+    try {
+      await addReportRemark(currentEditingReport.id, remarks);
+      setRemarks('');
+    } catch (remarkError) {
+      alert(remarkError.message || 'Unable to save remark.');
     }
   };
 
@@ -46,6 +82,7 @@ export default function Reports() {
     const matchesSearch = 
       report.issue.toLowerCase().includes(searchQuery.toLowerCase()) ||
       report.location.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      report.submittedBy.toLowerCase().includes(searchQuery.toLowerCase()) ||
       report.displayId.toLowerCase().includes(searchQuery.toLowerCase());
     
     return matchesTab && matchesSearch;
@@ -103,9 +140,9 @@ export default function Reports() {
           <table className="custom-table">
             <thead>
               <tr>
-                <th>ID</th>
-                <th>Issue</th>
+                <th>Title</th>
                 <th>Location</th>
+                <th>Reporter</th>
                 <th>Status</th>
                 <th>Date Submitted</th>
                 <th style={{ textAlign: 'right' }}>Actions</th>
@@ -115,9 +152,9 @@ export default function Reports() {
               {filteredReports.length > 0 ? (
                 filteredReports.map((report) => (
                   <tr key={report.id}>
-                    <td>{report.displayId}</td>
                     <td>{report.issue}</td>
                     <td>{report.location}</td>
+                    <td>{report.submittedBy || 'Anonymous'}</td>
                     <td>
                       <span className={`status-badge ${report.statusClass}`}>
                         {report.status}
@@ -149,8 +186,8 @@ export default function Reports() {
       </div>
 
       {/* Edit Details Popup Modal */}
-      {editingReport && (
-        <div className="modal-overlay" onClick={() => setEditingReport(null)}>
+      {currentEditingReport && (
+        <div className="modal-overlay report-modal-overlay" onClick={() => setEditingReport(null)}>
           <div className="report-modal-content" onClick={(e) => e.stopPropagation()}>
             
             {/* Back Button Link */}
@@ -159,73 +196,119 @@ export default function Reports() {
               <span>Back to Reports</span>
             </button>
 
-            {/* Content Details Grid */}
             <div className="report-modal-grid">
-              
-              {/* Left Column details */}
-              <div>
+              <section className="report-detail-panel">
+                <div className="report-panel-title">Report Details</div>
                 <div className="report-detail-row">
                   <span className="report-detail-label">Report ID</span>
-                  <span className="report-detail-value">{editingReport.displayId}</span>
+                  <span className="report-detail-value">{currentEditingReport.displayId}</span>
                 </div>
                 <div className="report-detail-row">
                   <span className="report-detail-label">Location</span>
-                  <span className="report-detail-value">{editingReport.location}</span>
+                  <span className="report-detail-value">{currentEditingReport.location}</span>
                 </div>
                 <div className="report-detail-row">
                   <span className="report-detail-label">Date Submitted</span>
-                  <span className="report-detail-value">{editingReport.dateSubmitted}</span>
+                  <span className="report-detail-value">{currentEditingReport.dateSubmitted}</span>
                 </div>
                 <div className="report-detail-row">
                   <span className="report-detail-label">Submitted by</span>
-                  <span className="report-detail-value">{editingReport.submittedBy || 'Anonymous'}</span>
+                  <span className="report-detail-value">{currentEditingReport.submittedBy || 'Anonymous'}</span>
                 </div>
                 <div className="report-detail-row">
                   <span className="report-detail-label">Contact No.</span>
-                  <span className="report-detail-value">{editingReport.contactNo || 'N/A'}</span>
+                  <span className="report-detail-value">{currentEditingReport.contactNo || 'N/A'}</span>
                 </div>
                 <div className="report-detail-row">
                   <span className="report-detail-label">Description</span>
-                  <span className="report-detail-value" style={{ fontWeight: '400' }}>
-                    {editingReport.description || 'No description provided.'}
+                  <span className="report-detail-value report-description-preview">
+                    {currentEditingReport.description || 'No description provided.'}
                   </span>
                 </div>
                 <div className="report-detail-row" style={{ marginBottom: 0 }}>
                   <span className="report-detail-label">Current Status</span>
-                  <span className={`report-detail-value status-${editingReport.statusClass}`}>
-                    {editingReport.status}
+                  <span className={`report-detail-value status-${currentEditingReport.statusClass}`}>
+                    {currentEditingReport.status}
                   </span>
                 </div>
-              </div>
+              </section>
 
-              {/* Right Column image mockup */}
-              <div className="report-image-container">
-                <img 
-                  src={editingReport.imageUrl || cloggedDrainImg} 
-                  alt="Clogged drainage documentation" 
-                  className="report-image" 
-                />
-              </div>
+              <section className="report-media-panel">
+                <div className="report-panel-title">Report Photo</div>
+                <button
+                  type="button"
+                  className="report-image-container report-image-button"
+                  onClick={() => setShowImagePopup(true)}
+                  title="View full image"
+                >
+                  <img 
+                    src={currentEditingReport.imageUrl || cloggedDrainImg} 
+                    alt="Clogged drainage documentation" 
+                    className="report-image" 
+                  />
+                </button>
+              </section>
 
             </div>
 
+            <div className="report-timeline-section">
+              <h3>Report Timeline</h3>
+              {currentReportLogs.length > 0 ? (
+                <div className="report-timeline-list">
+                  {currentReportLogs.map((log) => (
+                    <div key={log.id} className="report-timeline-item">
+                      <div className={`report-timeline-dot ${log.newStatus.toLowerCase().replace(/\s+/g, '')}`} />
+                      <div className="report-timeline-content">
+                        <div className="report-timeline-title">
+                          {log.oldStatus ? `${log.oldStatus} to ${log.newStatus}` : log.newStatus}
+                        </div>
+                        <div className="report-timeline-date">{log.createdAtLabel}</div>
+                        {log.remarks && (
+                          <div className="report-timeline-remarks">{log.remarks}</div>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="report-timeline-empty">No timeline updates yet.</div>
+              )}
+            </div>
+
             {/* Bottom edit inputs form */}
-            <form onSubmit={handleSave}>
+            <form className="report-action-form" onSubmit={handleSave}>
               <div className="report-edit-controls">
                 
                 {/* Remarks field */}
-                <div>
-                  <label className="form-label" style={{ fontWeight: '600' }}>Remarks (Optional)</label>
+                <div className="report-form-field">
+                  <div className="remarks-header-row">
+                    <label className="form-label" style={{ fontWeight: '600' }}>Admin Remark</label>
+                    <button
+                      type="button"
+                      className="btn-show-remarks"
+                      onClick={() => setShowRemarksPopup(true)}
+                    >
+                      Show all remarks ({currentReportRemarks.length})
+                    </button>
+                  </div>
                   <textarea
-                    placeholder="Enter remarks..."
+                    placeholder="Enter admin note..."
                     className="remarks-input-box"
                     value={remarks}
                     onChange={(e) => setRemarks(e.target.value)}
                   />
+                  <button
+                    type="button"
+                    className="btn-save-remark"
+                    onClick={handleAddRemark}
+                    disabled={!remarks.trim()}
+                  >
+                    Save Remark
+                  </button>
                 </div>
 
                 {/* Dropdown status selection */}
-                <div>
+                <div className="report-form-field">
                   <label className="form-label" style={{ fontWeight: '600' }}>Update Status To</label>
                   <select
                     className="status-select-box"
@@ -243,19 +326,20 @@ export default function Reports() {
               </div>
 
               {/* Submit Buttons */}
-              <div className="notif-btn-row" style={{ marginTop: 0, justifyContent: 'flex-start' }}>
+              <div className="notif-btn-row report-modal-actions">
                 <button 
                   type="button" 
                   className="btn-cancel-notif" 
-                  onClick={() => setEditingReport(null)}
-                  style={{ padding: '12px 42px' }}
+                  onClick={() => {
+                    setShowRemarksPopup(false);
+                    setEditingReport(null);
+                  }}
                 >
                   Cancel
                 </button>
                 <button 
                   type="submit" 
                   className="btn-send-notif" 
-                  style={{ padding: '12px 42px' }}
                 >
                   Update Status
                 </button>
@@ -263,6 +347,70 @@ export default function Reports() {
             </form>
 
           </div>
+          {showRemarksPopup && (
+            <div className="remarks-popup-overlay" onClick={() => setShowRemarksPopup(false)}>
+              <div className="remarks-popup-card" onClick={(e) => e.stopPropagation()}>
+                <div className="remarks-popup-header">
+                  <div>
+                    <h3>Admin Remarks</h3>
+                    <p>{currentEditingReport.displayId}</p>
+                  </div>
+                  <button
+                    type="button"
+                    className="remarks-popup-close"
+                    onClick={() => setShowRemarksPopup(false)}
+                  >
+                    <X size={18} />
+                  </button>
+                </div>
+
+                {currentReportRemarks.length > 0 ? (
+                  <div className="remarks-popup-list">
+                    {currentReportRemarks.map((item, index) => (
+                      <div key={item.id} className="remarks-popup-item">
+                        <div className="remarks-popup-number">{index + 1}</div>
+                        <div className="remarks-popup-body">
+                          <div className="remarks-popup-meta">
+                            <span>{item.adminName}</span>
+                            <span>{item.createdAtLabel}</span>
+                          </div>
+                          <p>{item.remark}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="remarks-popup-empty">No admin remarks yet.</div>
+                )}
+              </div>
+            </div>
+          )}
+          {showImagePopup && (
+            <div className="image-popup-overlay" onClick={() => setShowImagePopup(false)}>
+              <div className="image-popup-card" onClick={(e) => e.stopPropagation()}>
+                <div className="image-popup-header">
+                  <div>
+                    <h3>Report Image</h3>
+                    <p>{currentEditingReport.displayId}</p>
+                  </div>
+                  <button
+                    type="button"
+                    className="image-popup-close"
+                    onClick={() => setShowImagePopup(false)}
+                  >
+                    <X size={18} />
+                  </button>
+                </div>
+                <div className="image-popup-body">
+                  <img
+                    src={currentEditingReport.imageUrl || cloggedDrainImg}
+                    alt="Full report documentation"
+                    className="image-popup-img"
+                  />
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       )}
     </div>

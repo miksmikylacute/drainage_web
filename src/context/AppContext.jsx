@@ -69,6 +69,33 @@ function mapNotification(notification) {
   };
 }
 
+function mapReportLog(log) {
+  return {
+    id: log.id,
+    reportId: log.report_id,
+    oldStatus: log.old_status,
+    newStatus: log.new_status || 'Pending',
+    remarks: log.remarks || '',
+    changedBy: log.changed_by,
+    createdAt: log.created_at,
+    createdAtLabel: formatDate(log.created_at)
+  };
+}
+
+function mapReportRemark(remark) {
+  const admin = remark.users || {};
+
+  return {
+    id: remark.id,
+    reportId: remark.report_id,
+    adminId: remark.admin_id,
+    adminName: admin.fullname || admin.email || 'Admin',
+    remark: remark.remark || '',
+    createdAt: remark.created_at,
+    createdAtLabel: formatDate(remark.created_at)
+  };
+}
+
 function buildSession(authSession, profile) {
   if (!authSession?.user || !profile) return null;
 
@@ -90,6 +117,8 @@ export function AppProvider({ children }) {
   const [reports, setReports] = useState([]);
   const [residents, setResidents] = useState([]);
   const [notifications, setNotifications] = useState([]);
+  const [reportLogs, setReportLogs] = useState([]);
+  const [reportRemarks, setReportRemarks] = useState([]);
   const [session, setSession] = useState(null);
   const [authLoading, setAuthLoading] = useState(true);
   const [loading, setLoading] = useState(false);
@@ -166,12 +195,56 @@ export function AppProvider({ children }) {
     }
   }, []);
 
+  const loadReportLogs = useCallback(async () => {
+    try {
+      const { data: logRows, error: logsError } = await supabase
+        .from('report_logs')
+        .select('id,report_id,old_status,new_status,changed_by,remarks,created_at')
+        .order('created_at', { ascending: false });
+
+      if (logsError) throw logsError;
+      setReportLogs((logRows || []).map(mapReportLog));
+    } catch (loadError) {
+      setError(loadError.message || 'Unable to load report timeline.');
+    }
+  }, []);
+
+  const loadReportRemarks = useCallback(async () => {
+    try {
+      const { data: remarkRows, error: remarksError } = await supabase
+        .from('admin_report_remarks')
+        .select(`
+          id,
+          report_id,
+          admin_id,
+          remark,
+          created_at,
+          users:admin_id (
+            fullname,
+            email
+          )
+        `)
+        .order('created_at', { ascending: true });
+
+      if (remarksError) throw remarksError;
+      setReportRemarks((remarkRows || []).map(mapReportRemark));
+    } catch (loadError) {
+      setError(loadError.message || 'Unable to load report remarks.');
+    }
+  }, []);
+
   const loadDashboardData = useCallback(async () => {
     setLoading(true);
     setError('');
 
     try {
-      const [usersResult, reportsResult, notificationsResult] = await Promise.all([
+      const [
+        usersResult,
+        reportsResult,
+        notificationsResult,
+        logsResult,
+        remarksResult
+      ] = await Promise.all([
         supabase
           .from('users')
           .select('id,email,fullname,phone,avatar_url,role,status,created_at')
@@ -202,16 +275,38 @@ export function AppProvider({ children }) {
         supabase
           .from('notifications')
           .select('id,user_id,report_id,title,message,is_read,sent_by,created_at')
+          .order('created_at', { ascending: false }),
+        supabase
+          .from('report_logs')
+          .select('id,report_id,old_status,new_status,changed_by,remarks,created_at')
+          .order('created_at', { ascending: false }),
+        supabase
+          .from('admin_report_remarks')
+          .select(`
+            id,
+            report_id,
+            admin_id,
+            remark,
+            created_at,
+            users:admin_id (
+              fullname,
+              email
+            )
+          `)
           .order('created_at', { ascending: false })
       ]);
 
       if (usersResult.error) throw usersResult.error;
       if (reportsResult.error) throw reportsResult.error;
       if (notificationsResult.error) throw notificationsResult.error;
+      if (logsResult.error) throw logsResult.error;
+      if (remarksResult.error) throw remarksResult.error;
 
       setResidents((usersResult.data || []).map(mapUserProfile));
       setReports((reportsResult.data || []).map(mapReport));
       setNotifications((notificationsResult.data || []).map(mapNotification));
+      setReportLogs((logsResult.data || []).map(mapReportLog));
+      setReportRemarks((remarksResult.data || []).map(mapReportRemark).reverse());
     } catch (loadError) {
       setError(loadError.message || 'Unable to load dashboard data.');
     } finally {
@@ -321,6 +416,14 @@ export function AppProvider({ children }) {
         { event: '*', schema: 'public', table: 'report_logs' },
         () => {
           loadReports();
+          loadReportLogs();
+        }
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'admin_report_remarks' },
+        () => {
+          loadReportRemarks();
         }
       )
       .subscribe();
@@ -328,7 +431,7 @@ export function AppProvider({ children }) {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [loadNotifications, loadReports, session?.user]);
+  }, [loadNotifications, loadReportLogs, loadReportRemarks, loadReports, session?.user]);
 
   const signIn = async (email, password) => {
     if (!email.trim() || !password) {
@@ -350,6 +453,8 @@ export function AppProvider({ children }) {
     setReports([]);
     setResidents([]);
     setNotifications([]);
+    setReportLogs([]);
+    setReportRemarks([]);
   };
 
   const resetPassword = async (email) => {
@@ -437,6 +542,42 @@ export function AppProvider({ children }) {
       )
     );
     await loadReports();
+    await loadReportLogs();
+  };
+
+  const addReportRemark = async (reportId, remark) => {
+    if (!session?.user) throw new Error('No authenticated admin session.');
+
+    const cleanRemark = `${remark || ''}`.trim();
+    if (!cleanRemark) {
+      throw new Error('Please enter a remark.');
+    }
+
+    const { data, error: remarkError } = await supabase
+      .from('admin_report_remarks')
+      .insert({
+        report_id: reportId,
+        admin_id: session.user.id,
+        remark: cleanRemark
+      })
+      .select(`
+        id,
+        report_id,
+        admin_id,
+        remark,
+        created_at,
+        users:admin_id (
+          fullname,
+          email
+        )
+      `)
+      .single();
+
+    if (remarkError) throw remarkError;
+
+    const mappedRemark = mapReportRemark(data);
+    setReportRemarks((prevRemarks) => [...prevRemarks, mappedRemark]);
+    return mappedRemark;
   };
 
   const createUser = async ({ name, contact, email, password, role }) => {
@@ -538,6 +679,8 @@ export function AppProvider({ children }) {
     reports,
     residents,
     notifications,
+    reportLogs,
+    reportRemarks,
     session,
     authLoading,
     loading,
@@ -548,6 +691,7 @@ export function AppProvider({ children }) {
     resetPassword,
     updateCurrentProfile,
     updateReportDetails,
+    addReportRemark,
     createUser,
     addResident,
     deleteResident,

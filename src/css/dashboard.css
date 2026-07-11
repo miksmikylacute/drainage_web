@@ -186,9 +186,8 @@
 .chart-container {
   display: flex;
   align-items: center;
-  gap: 24px;
-  padding: 10px 0 4px;
-  flex: 1;
+  gap: 22px;
+  padding: 6px 0 4px;
 }
 
 .pie-chart-wrapper {
@@ -240,6 +239,46 @@
 .legend-value {
   font-weight: 500;
   color: var(--text-muted);
+}
+
+.status-bars {
+  display: grid;
+  gap: 10px;
+  margin-top: 18px;
+  padding-top: 16px;
+  border-top: 1px solid #e8ecf1;
+}
+
+.status-bar-row {
+  display: grid;
+  gap: 6px;
+}
+
+.status-bar-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  color: #475569;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.status-bar-meta strong {
+  color: #1e293b;
+  font-size: 13px;
+}
+
+.status-bar-track {
+  height: 8px;
+  border-radius: 999px;
+  background: #eef2f7;
+  overflow: hidden;
+}
+
+.status-bar-fill {
+  height: 100%;
+  border-radius: inherit;
+  transition: width 0.2s ease;
 }
 
 /* Map Preview */
@@ -322,6 +361,16 @@
   color: #1e293b;
 }
 
+.system-info-icon.admins-icon {
+  background-color: rgba(37, 99, 235, 0.1);
+  color: #2563eb;
+}
+
+.system-info-icon.super-admins-icon {
+  background-color: rgba(139, 92, 246, 0.1);
+  color: #7c3aed;
+}
+
 .system-info-dot {
   width: 36px;
   height: 36px;
@@ -342,4 +391,28 @@
   font-size: 22px;
   font-weight: 800;
   color: #1e293b;
+}
+
+.super-admin-actions {
+  display: grid;
+  gap: 10px;
+  margin-top: auto;
+}
+
+.super-admin-action {
+  min-height: 44px;
+  padding: 0 14px;
+  border-radius: 12px;
+  background: #eff6ff;
+  color: #1d4ed8;
+  font-size: 13px;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border: 1px solid rgba(37, 99, 235, 0.16);
+}
+
+.super-admin-action:hover {
+  background: #dbeafe;
 }
