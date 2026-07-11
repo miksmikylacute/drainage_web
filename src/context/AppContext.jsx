@@ -406,6 +406,14 @@ export function AppProvider({ children }) {
       )
       .on(
         'postgres_changes',
+        { event: '*', schema: 'public', table: 'users' },
+        () => {
+          loadUsers();
+          loadReports();
+        }
+      )
+      .on(
+        'postgres_changes',
         { event: '*', schema: 'public', table: 'notifications' },
         () => {
           loadNotifications();
@@ -431,7 +439,7 @@ export function AppProvider({ children }) {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [loadNotifications, loadReportLogs, loadReportRemarks, loadReports, session?.user]);
+  }, [loadNotifications, loadReportLogs, loadReportRemarks, loadReports, loadUsers, session?.user]);
 
   const signIn = async (email, password) => {
     if (!email.trim() || !password) {
