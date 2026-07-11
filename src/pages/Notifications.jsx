@@ -14,6 +14,7 @@ export default function Notifications() {
   const suggestions = residents.filter(res => {
     const query = searchQuery.toLowerCase().trim();
     if (!query) return false;
+    if (res.role !== 'resident') return false;
     
     const matchesQuery = 
       res.name.toLowerCase().includes(query) || 

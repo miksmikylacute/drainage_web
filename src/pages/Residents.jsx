@@ -1,20 +1,23 @@
 import { useState } from 'react';
 import { useApp } from '../context/useApp';
-import { Search, Trash2, UserPlus, X } from 'lucide-react';
+import { Search, UserPlus, X } from 'lucide-react';
 import '../css/residents.css';
 
 export default function Residents() {
   const { 
     residents, 
-    addResident, 
-    deleteResident, 
-    toggleResidentStatus 
+    createUser,
+    session,
+    toggleResidentStatus,
+    loading
   } = useApp();
+  const isSuperAdmin = session?.user?.role === 'super_admin';
   
   const [searchQuery, setSearchQuery] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
   
   // Form State
+  const [role, setRole] = useState('resident');
   const [name, setName] = useState('');
   const [contact, setContact] = useState('');
   const [email, setEmail] = useState('');
@@ -22,6 +25,7 @@ export default function Residents() {
   const [isSaving, setIsSaving] = useState(false);
 
   const resetForm = () => {
+    setRole('resident');
     setName('');
     setContact('');
     setEmail('');
@@ -33,7 +37,6 @@ export default function Residents() {
     setIsModalOpen(true);
   };
 
-  // Handle Add Resident Form Submit
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!name.trim() || !contact.trim() || !email.trim() || !password) {
@@ -49,7 +52,8 @@ export default function Residents() {
     setIsSaving(true);
 
     try {
-      await addResident({
+      await createUser({
+        role,
         name: name.trim(),
         contact: contact.trim(),
         email: email.trim(),
@@ -71,24 +75,32 @@ export default function Residents() {
     resetForm();
   };
 
-  // Filter residents
-  const filteredResidents = residents.filter(res => 
-    res.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    res.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    res.contact.includes(searchQuery)
+  const visibleUsers = residents.filter((user) => isSuperAdmin || user.role === 'resident');
+
+  const filteredUsers = visibleUsers.filter(user => 
+    user.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    user.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    user.contact.includes(searchQuery) ||
+    user.role.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   return (
     <div>
-      <div className="section-header" style={{ marginBottom: '24px', justifyContent: 'flex-end' }}>
-        
+      <div className="user-management-title">
+        <div>
+          <h1>User Management</h1>
+          <p>
+            {isSuperAdmin
+              ? 'Create and manage resident and admin accounts.'
+              : 'Create and manage resident accounts.'}
+          </p>
+        </div>
         <div style={{ display: 'flex', gap: '12px' }}>
-          {/* Search Resident */}
           <div className="search-input-wrapper">
             <Search className="search-icon" size={18} />
             <input
               type="text"
-              placeholder="Search resident..."
+              placeholder="Search users..."
               className="search-input"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
@@ -107,12 +119,15 @@ export default function Residents() {
             style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 18px', borderRadius: '12px' }}
           >
             <UserPlus size={18} />
-            <span>Add Resident</span>
+            <span>Add User</span>
           </button>
         </div>
       </div>
 
-      {/* Residents Table */}
+      {loading && (
+        <div className="user-management-loading">Loading users...</div>
+      )}
+
       <div className="card" style={{ padding: '8px 24px 24px' }}>
         <div className="table-container">
           <table className="custom-table">
@@ -121,52 +136,67 @@ export default function Residents() {
                 <th>Name</th>
                 <th>Contact Number</th>
                 <th>Email</th>
+                <th>Role</th>
                 <th>Status</th>
                 <th style={{ textAlign: 'right' }}>Actions</th>
               </tr>
             </thead>
             <tbody>
-              {filteredResidents.length > 0 ? (
-                filteredResidents.map((res) => (
-                  <tr key={res.id}>
-                    <td>{res.name}</td>
-                    <td>{res.contact}</td>
-                    <td>{res.email}</td>
+              {filteredUsers.length > 0 ? (
+                filteredUsers.map((user) => (
+                  <tr key={user.id}>
+                    <td>
+                      <div className="user-cell">
+                        <span className="user-avatar-sm">
+                          {user.avatarUrl ? <img src={user.avatarUrl} alt="" /> : user.name.charAt(0)}
+                        </span>
+                        <span>{user.name}</span>
+                      </div>
+                    </td>
+                    <td>{user.contact || '—'}</td>
+                    <td>{user.email}</td>
+                    <td>
+                      <span className={`role-badge ${user.role}`}>
+                        {user.role === 'super_admin' ? 'Super Admin' : user.role}
+                      </span>
+                    </td>
                     <td>
                       <button
                         title="Click to toggle status"
-                        className={`status-toggle-btn ${res.status.toLowerCase()}`}
+                        className={`status-toggle-btn ${user.status.toLowerCase()}`}
+                        disabled={user.role === 'super_admin' || (!isSuperAdmin && user.role !== 'resident')}
                         onClick={async () => {
                           try {
-                            await toggleResidentStatus(res.id);
+                            await toggleResidentStatus(user.id);
                           } catch (statusError) {
-                            alert(statusError.message || 'Unable to update resident status.');
+                            alert(statusError.message || 'Unable to update user status.');
                           }
                         }}
                       >
-                        {res.status}
+                        {user.status}
                       </button>
                     </td>
                     <td style={{ textAlign: 'right' }}>
-                      <button 
-                        className="btn-delete"
-                        onClick={() => {
-                          if (confirm(`Are you sure you want to delete ${res.name}?`)) {
-                            deleteResident(res.id).catch((deleteError) => {
-                              alert(deleteError.message || 'Unable to delete resident.');
-                            });
+                      <button
+                        className="btn-secondary"
+                        disabled={user.role === 'super_admin' || (!isSuperAdmin && user.role !== 'resident')}
+                        onClick={async () => {
+                          try {
+                            await toggleResidentStatus(user.id);
+                          } catch (statusError) {
+                            alert(statusError.message || 'Unable to update user status.');
                           }
                         }}
                       >
-                        <Trash2 size={18} />
+                        {user.status === 'Active' ? 'Disable' : 'Enable'}
                       </button>
                     </td>
                   </tr>
                 ))
               ) : (
                 <tr>
-                  <td colSpan="5" style={{ textAlign: 'center', padding: '40px', color: '#64748b' }}>
-                    No residents found matching your search.
+                  <td colSpan="6" style={{ textAlign: 'center', padding: '40px', color: '#64748b' }}>
+                    No users found matching your search.
                   </td>
                 </tr>
               )}
@@ -175,18 +205,31 @@ export default function Residents() {
         </div>
       </div>
 
-      {/* Add Resident Modal */}
       {isModalOpen && (
         <div className="modal-overlay" onClick={closeModal}>
           <div className="modal-content" onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
-              <h2>Add New Resident</h2>
+              <h2>Add New User</h2>
               <button className="modal-close" onClick={closeModal} disabled={isSaving}>
                 <X size={20} />
               </button>
             </div>
 
             <form onSubmit={handleSubmit}>
+              {isSuperAdmin && (
+                <div className="form-group">
+                  <label className="form-label">Account Type</label>
+                  <select
+                    className="form-input"
+                    value={role}
+                    onChange={(e) => setRole(e.target.value)}
+                  >
+                    <option value="resident">Resident</option>
+                    <option value="admin">Admin</option>
+                  </select>
+                </div>
+              )}
+
               <div className="form-group">
                 <label className="form-label">Full Name</label>
                 <input
@@ -241,7 +284,7 @@ export default function Residents() {
                   Cancel
                 </button>
                 <button type="submit" className="btn-primary" disabled={isSaving}>
-                  {isSaving ? 'Creating...' : 'Create Resident'}
+                  {isSaving ? 'Creating...' : `Create ${role === 'admin' ? 'Admin' : 'Resident'}`}
                 </button>
               </div>
             </form>

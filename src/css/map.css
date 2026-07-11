@@ -9,8 +9,10 @@
 
 .map-header {
   display: flex;
-  flex-direction: column;
-  gap: 4px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
 }
 
 .map-page-title {
@@ -24,6 +26,33 @@
   font-size: 13px;
   color: var(--text-muted);
   margin: 0;
+}
+
+.map-legend {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.map-legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  color: #334155;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.map-legend-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
 }
 
 /* ─── Leaflet Card Wrapper ────────────────────────────────────── */
@@ -126,8 +155,9 @@
   text-transform: capitalize;
 }
 .lf-status-resolved    { background: #d1fae5; color: #065f46; }
-.lf-status-inprogress  { background: #fef3c7; color: #92400e; }
-.lf-status-rejected    { background: #fee2e2; color: #991b1b; }
+.lf-status-pending     { background: #fee2e2; color: #991b1b; }
+.lf-status-inprogress  { background: #dbeafe; color: #1d4ed8; }
+.lf-status-rejected    { background: #ede9fe; color: #6d28d9; }
 
 .lf-popup-btn {
   display: block;

@@ -1,11 +1,11 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
 
 :root {
-  --primary: #35b5ff;
-  --primary-hover: #1da3ff;
+  --primary: #2196f3;
+  --primary-hover: #1976d2;
   --primary-dark: #0056b3;
   --bg-app: #f4f6f8;
-  --bg-sidebar: #35b5ff;
+  --bg-sidebar: #2196f3;
   --bg-card: #ffffff;
   --text-dark: #1e293b;
   --text-muted: #64748b;
@@ -17,6 +17,8 @@
   --status-inprogress-bg: #fff7ed;
   --status-rejected: #ef4444;
   --status-rejected-bg: #fef2f2;
+  --status-pending: #64748b;
+  --status-pending-bg: #f1f5f9;
 
   --font-family: 'Inter', system-ui, -apple-system, sans-serif;
   --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
@@ -129,6 +131,11 @@ a {
 .status-badge.resolved {
   background-color: var(--status-resolved-bg);
   color: var(--status-resolved);
+}
+
+.status-badge.pending {
+  background-color: var(--status-pending-bg);
+  color: var(--status-pending);
 }
 
 .status-badge.inprogress {
