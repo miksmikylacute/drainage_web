@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useApp } from '../context/useApp';
 import {
   buildReportMarkerSvg,
@@ -13,6 +13,8 @@ import '../css/map.css';
 
 export default function MapView() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const focusReportId = searchParams.get('focus');
   const { reports } = useApp();
   const mapRef = useRef(null);
   const leafletMapRef = useRef(null);
@@ -83,6 +85,7 @@ export default function MapView() {
       markersRef.current = [];
 
       const geoReports = reports.filter(hasReportCoordinates);
+      let focusedMarker = null;
 
       geoReports.forEach((report) => {
         const color = getReportStatusColor(report.status);
@@ -119,9 +122,16 @@ export default function MapView() {
         });
 
         markersRef.current.push(marker);
+
+        if (focusReportId && (report.id === focusReportId || report.displayId === focusReportId)) {
+          focusedMarker = marker;
+        }
       });
 
-      if (geoReports.length > 0) {
+      if (focusedMarker) {
+        map.setView(focusedMarker.getLatLng(), 18);
+        focusedMarker.openPopup();
+      } else if (geoReports.length > 0) {
         const bounds = L.latLngBounds(
           geoReports.map((report) => [report.latitude, report.longitude])
         );
@@ -130,7 +140,7 @@ export default function MapView() {
     }
 
     syncMarkers();
-  }, [reports, navigate, mapReady]);
+  }, [reports, navigate, mapReady, focusReportId]);
 
   return (
     <div className="map-page-wrapper">

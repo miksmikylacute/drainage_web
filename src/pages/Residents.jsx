@@ -24,6 +24,9 @@ export default function Residents() {
   const [password, setPassword] = useState('');
   const [isSaving, setIsSaving] = useState(false);
 
+  const [selectedUser, setSelectedUser] = useState(null);
+  const [viewingImageUrl, setViewingImageUrl] = useState(null);
+
   const resetForm = () => {
     setRole('resident');
     setName('');
@@ -86,15 +89,7 @@ export default function Residents() {
 
   return (
     <div>
-      <div className="user-management-title">
-        <div>
-          <h1>User Management</h1>
-          <p>
-            {isSuperAdmin
-              ? 'Create and manage resident and admin accounts.'
-              : 'Create and manage resident accounts.'}
-          </p>
-        </div>
+      <div className="user-management-title" style={{ justifyContent: 'flex-end' }}>
         <div style={{ display: 'flex', gap: '12px' }}>
           <div className="search-input-wrapper">
             <Search className="search-icon" size={18} />
@@ -146,7 +141,11 @@ export default function Residents() {
                 filteredUsers.map((user) => (
                   <tr key={user.id}>
                     <td>
-                      <div className="user-cell">
+                      <div 
+                        className="user-cell" 
+                        style={{ cursor: 'pointer' }}
+                        onClick={() => setSelectedUser(user)}
+                      >
                         <span className="user-avatar-sm">
                           {user.avatarUrl ? <img src={user.avatarUrl} alt="" /> : user.name.charAt(0)}
                         </span>
@@ -288,6 +287,84 @@ export default function Residents() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {selectedUser && (
+        <div className="modal-overlay" onClick={() => setSelectedUser(null)}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ textAlign: 'center' }}>
+            <div className="modal-header">
+              <h2>User Profile</h2>
+              <button className="modal-close" onClick={() => setSelectedUser(null)}>
+                <X size={20} />
+              </button>
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '16px', margin: '20px 0 10px' }}>
+              <div className="admin-avatar-preview" style={{ width: '100px', height: '100px', fontSize: '32px', fontWeight: '800' }}>
+                {selectedUser.avatarUrl ? (
+                  <div 
+                    onClick={() => setViewingImageUrl(selectedUser.avatarUrl)} 
+                    style={{ cursor: 'pointer', display: 'block', width: '100%', height: '100%' }}
+                  >
+                    <img src={selectedUser.avatarUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                  </div>
+                ) : (
+                  selectedUser.name.charAt(0)
+                )}
+              </div>
+              <h3 style={{ fontSize: '20px', fontWeight: '700', color: 'var(--text-dark)', margin: '0' }}>{selectedUser.name}</h3>
+              <span className={`role-badge ${selectedUser.role}`} style={{ alignSelf: 'center' }}>
+                {selectedUser.role === 'super_admin' ? 'Super Admin' : selectedUser.role}
+              </span>
+            </div>
+
+            <div style={{ textAlign: 'left', marginTop: '24px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              <div style={{ borderBottom: '1px solid #f1f5f9', paddingBottom: '8px' }}>
+                <span style={{ fontSize: '12px', fontWeight: '600', color: 'var(--text-muted)', display: 'block', marginBottom: '2px' }}>Email Address</span>
+                <span style={{ fontSize: '15px', color: 'var(--text-dark)', fontWeight: '500' }}>{selectedUser.email}</span>
+              </div>
+              <div style={{ borderBottom: '1px solid #f1f5f9', paddingBottom: '8px' }}>
+                <span style={{ fontSize: '12px', fontWeight: '600', color: 'var(--text-muted)', display: 'block', marginBottom: '2px' }}>Contact Number</span>
+                <span style={{ fontSize: '15px', color: 'var(--text-dark)', fontWeight: '500' }}>{selectedUser.contact || '—'}</span>
+              </div>
+              <div style={{ borderBottom: '1px solid #f1f5f9', paddingBottom: '8px' }}>
+                <span style={{ fontSize: '12px', fontWeight: '600', color: 'var(--text-muted)', display: 'block', marginBottom: '2px' }}>Account Status</span>
+                <span className={`status-toggle-btn ${selectedUser.status.toLowerCase()}`} style={{ padding: '0', cursor: 'default' }}>{selectedUser.status}</span>
+              </div>
+            </div>
+
+            <div className="modal-actions" style={{ marginTop: '32px' }}>
+              <button type="button" className="btn-secondary" onClick={() => setSelectedUser(null)} style={{ width: '100%' }}>
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Image Viewer Overlay */}
+      {viewingImageUrl && (
+        <div 
+          className="modal-overlay" 
+          onClick={() => setViewingImageUrl(null)} 
+          style={{ zIndex: 10000, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'zoom-out' }}
+        >
+          <div style={{ position: 'relative', maxWidth: '90vw', maxHeight: '90vh' }}>
+            <img 
+              src={viewingImageUrl} 
+              alt="Profile" 
+              style={{ maxWidth: '100%', maxHeight: '90vh', objectFit: 'contain', borderRadius: '8px', boxShadow: '0 10px 25px rgba(0,0,0,0.5)' }} 
+              onClick={(e) => e.stopPropagation()} 
+            />
+            <button 
+              className="modal-close" 
+              onClick={() => setViewingImageUrl(null)} 
+              style={{ position: 'absolute', top: '-40px', right: '0', color: 'white', background: 'transparent', border: 'none', cursor: 'pointer', padding: '8px' }}
+            >
+              <X size={28} />
+            </button>
           </div>
         </div>
       )}

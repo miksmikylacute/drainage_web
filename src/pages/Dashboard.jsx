@@ -118,17 +118,17 @@ export default function Dashboard() {
   const pctRejected = 100 - pctPending - pctInProgress - pctResolved;
 
   const conicGradient = `conic-gradient(
-    #ef4444 0% ${pctPending}%,
-    #2563eb ${pctPending}% ${pctPending + pctInProgress}%,
-    #10b981 ${pctPending + pctInProgress}% ${pctPending + pctInProgress + pctResolved}%,
-    #8b5cf6 ${pctPending + pctInProgress + pctResolved}% 100%
+    #FFC107 0% ${pctPending}%,
+    #3B82F6 ${pctPending}% ${pctPending + pctInProgress}%,
+    #22C55E ${pctPending + pctInProgress}% ${pctPending + pctInProgress + pctResolved}%,
+    #EF4444 ${pctPending + pctInProgress + pctResolved}% 100%
   )`;
 
   const statusChartItems = [
-    { label: 'Pending', count: pendingCount, pct: pctPending, color: '#ef4444' },
-    { label: 'In Progress', count: inProgressCount, pct: pctInProgress, color: '#2563eb' },
-    { label: 'Resolved', count: resolvedCount, pct: pctResolved, color: '#10b981' },
-    { label: 'Rejected', count: rejectedCount, pct: pctRejected, color: '#8b5cf6' }
+    { label: 'Pending', count: pendingCount, pct: pctPending, color: '#FFC107' },
+    { label: 'In Progress', count: inProgressCount, pct: pctInProgress, color: '#3B82F6' },
+    { label: 'Resolved', count: resolvedCount, pct: pctResolved, color: '#22C55E' },
+    { label: 'Rejected', count: rejectedCount, pct: pctRejected, color: '#EF4444' }
   ];
 
   // Limit recent reports table to latest 3 reports
@@ -256,7 +256,7 @@ export default function Dashboard() {
             <div className="pie-legend">
               <div className="legend-item">
                 <div className="legend-label-group">
-                  <div className="legend-color" style={{ backgroundColor: '#ef4444' }} />
+                  <div className="legend-color" style={{ backgroundColor: '#FFC107' }} />
                   <span>Pending</span>
                 </div>
                 <span className="legend-value">{pendingCount} ({pctPending}%)</span>

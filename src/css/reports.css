@@ -121,14 +121,11 @@
   height: 0;
 }
 
-.report-detail-value.status-pending {
-  color: var(--status-pending);
-}
-
+.report-detail-value.status-pending,
 .report-detail-value.status-inprogress,
 .report-detail-value.status-resolved,
 .report-detail-value.status-rejected {
-  color: var(--text-dark);
+  color: #000000;
 }
 
 .report-image-container {
@@ -237,19 +234,19 @@
 }
 
 .report-timeline-dot.pending {
-  background: #ef4444;
+  background: #FFC107;
 }
 
 .report-timeline-dot.inprogress {
-  background: #2563eb;
+  background: #3B82F6;
 }
 
 .report-timeline-dot.resolved {
-  background: #10b981;
+  background: #22C55E;
 }
 
 .report-timeline-dot.rejected {
-  background: #8b5cf6;
+  background: #EF4444;
 }
 
 .report-timeline-content {
@@ -320,7 +317,7 @@
 .btn-show-remarks {
   border: none;
   background: none;
-  color: #2563eb;
+  color: #000000;
   font-size: 12px;
   font-weight: 800;
   cursor: pointer;
@@ -337,7 +334,7 @@
   padding: 0 16px;
   border: none;
   border-radius: 9px;
-  background: #1e293b;
+  background: #2196f3;
   color: #ffffff;
   font-size: 13px;
   font-weight: 800;
@@ -654,4 +651,13 @@
 
 .report-modal-content .btn-remove-report:hover {
   background-color: #b91c1c;
+}
+
+.location-link {
+  cursor: pointer;
+  color: inherit;
+}
+
+.location-link:hover, .location-link:active {
+  text-decoration: underline;
 }

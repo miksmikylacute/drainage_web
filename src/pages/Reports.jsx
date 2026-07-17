@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams, useNavigate } from 'react-router-dom';
 import { useApp } from '../context/useApp';
 import { Search, X, Edit, ChevronLeft, Trash2 } from 'lucide-react';
 import cloggedDrainImg from '../assets/clogged_drain.png';
@@ -18,6 +18,7 @@ export default function Reports() {
     addReportRemark
   } = useApp();
   const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
   const initialSearch = searchParams.get('search') || '';
   const [searchQuery, setSearchQuery] = useState(initialSearch);
   const [activeTab, setActiveTab] = useState('All');
@@ -188,7 +189,7 @@ export default function Reports() {
                         className="btn-delete"
                         onClick={() => handleOpenEdit(report)}
                         title="Edit report details"
-                        style={{ color: 'var(--primary-dark)' }}
+                        style={{ color: '#000000' }}
                       >
                         <Edit size={16} />
                       </button>
@@ -227,7 +228,16 @@ export default function Reports() {
                 </div>
                 <div className="report-detail-row">
                   <span className="report-detail-label">Location</span>
-                  <span className="report-detail-value">{currentEditingReport.location}</span>
+                  {currentEditingReport.latitude && currentEditingReport.longitude ? (
+                    <span 
+                      className="report-detail-value location-link"
+                      onClick={() => navigate(`/map?focus=${currentEditingReport.id}`)}
+                    >
+                      {currentEditingReport.location}
+                    </span>
+                  ) : (
+                    <span className="report-detail-value">{currentEditingReport.location}</span>
+                  )}
                 </div>
                 <div className="report-detail-row">
                   <span className="report-detail-label">Date Submitted</span>
