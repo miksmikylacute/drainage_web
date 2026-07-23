@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { Home, FileText, MapPin, Users, Bell, LogOut } from 'lucide-react';
+import { Home, FileText, MapPin, History, Users, Bell, LogOut } from 'lucide-react';
 import { useApp } from '../context/useApp';
 import drainageLogo from '../assets/drainage_clean.png';
 
@@ -15,6 +15,7 @@ export default function Sidebar() {
     { name: 'Dashboard', path: '/dashboard', icon: Home },
     { name: 'Reports', path: '/reports', icon: FileText },
     { name: 'Map', path: '/map', icon: MapPin },
+    { name: 'Report Archive', path: '/archive', icon: History },
     { name: 'Residents', path: '/residents', icon: Users },
     { name: 'Notification', path: '/notifications', icon: Bell },
   ];

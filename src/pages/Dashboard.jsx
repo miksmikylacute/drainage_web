@@ -162,25 +162,25 @@ export default function Dashboard() {
         <div className="stat-card-wrapper">
           <div className="card stat-card pending">
             <span className="stat-title">Pending</span>
-            <span className="stat-value">{pendingCount}</span>
+            <span className="stat-value" style={{ color: '#FFC107' }}>{pendingCount}</span>
           </div>
         </div>
         <div className="stat-card-wrapper">
           <div className="card stat-card inprogress">
             <span className="stat-title">In Progress</span>
-            <span className="stat-value">{inProgressCount}</span>
+            <span className="stat-value" style={{ color: '#3B82F6' }}>{inProgressCount}</span>
           </div>
         </div>
         <div className="stat-card-wrapper">
           <div className="card stat-card resolved">
             <span className="stat-title">Resolved</span>
-            <span className="stat-value">{resolvedCount}</span>
+            <span className="stat-value" style={{ color: '#22C55E' }}>{resolvedCount}</span>
           </div>
         </div>
         <div className="stat-card-wrapper">
           <div className="card stat-card rejected">
             <span className="stat-title">Rejected</span>
-            <span className="stat-value">{rejectedCount}</span>
+            <span className="stat-value" style={{ color: '#EF4444' }}>{rejectedCount}</span>
           </div>
         </div>
       </div>

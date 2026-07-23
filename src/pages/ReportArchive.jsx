@@ -1,11 +1,33 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { useApp } from '../context/useApp';
-import { Search, X, Edit, ChevronLeft, Trash2 } from 'lucide-react';
+import {
+  Search, X, Calendar, Filter, Eye, ChevronLeft, ChevronRight, Trash2, Info, ChevronDown
+} from 'lucide-react';
 import cloggedDrainImg from '../assets/clogged_drain.png';
 import '../css/reports.css';
+import '../css/archive.css';
 
-export default function Reports() {
+const MONTHS = [
+  'January', 'February', 'March', 'April', 'May', 'June',
+  'July', 'August', 'September', 'October', 'November', 'December'
+];
+
+const STATIC_YEARS = ['2026', '2027', '2028'];
+
+// Helper to format date nicely
+function formatDate(value) {
+  if (!value) return 'N/A';
+  return new Intl.DateTimeFormat('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit'
+  }).format(new Date(value));
+}
+
+export default function ReportArchive() {
   const {
     reports,
     reportLogs,
@@ -17,35 +39,27 @@ export default function Reports() {
     deleteReport,
     addReportRemark
   } = useApp();
+
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
+
   const initialSearch = searchParams.get('search') || '';
   const [searchQuery, setSearchQuery] = useState(initialSearch);
-  const [activeTab, setActiveTab] = useState('All');
 
-  // Priority Helpers
-  const getPriority = (reportId) => {
-    const saved = localStorage.getItem(`report_priority_${reportId}`);
-    return saved || '';
-  };
+  // Defaults to match second screenshot (July 2026)
+  const [monthFilter, setMonthFilter] = useState('July');
+  const [yearFilter, setYearFilter] = useState('2026');
+  const [statusFilter, setStatusFilter] = useState('All Status');
+  const [sortBy, setSortBy] = useState('Newest First');
+  const [visibleCount, setVisibleCount] = useState(10);
 
-  const severityWeight = {
-    'Critical': 4,
-    'High': 3,
-    'Medium': 2,
-    'Low': 1,
-    '': 0
-  };
-
-  // Edit Modal State
+  // Edit/View Modal State
   const [editingReport, setEditingReport] = useState(null);
   const [remarks, setRemarks] = useState('');
   const [statusVal, setStatusVal] = useState('');
-  const [priorityVal, setPriorityVal] = useState('');
   const [showRemarksPopup, setShowRemarksPopup] = useState(false);
   const [showImagePopup, setShowImagePopup] = useState(false);
 
-  const tabs = ['All', 'Pending', 'In Progress', 'Resolved', 'Rejected'];
   const currentEditingReport = editingReport
     ? reports.find((report) => report.id === editingReport.id) || editingReport
     : null;
@@ -57,11 +71,83 @@ export default function Reports() {
     : [];
   const isSuperAdmin = session?.user?.role === 'super_admin';
 
+  // Derive available years
+  const availableYears = useMemo(() => {
+    const dbYears = new Set(
+      reports
+        .map((r) => {
+          const d = new Date(r.createdAt || r.dateSubmitted);
+          return isNaN(d) ? null : String(d.getFullYear());
+        })
+        .filter(Boolean)
+    );
+    STATIC_YEARS.forEach((y) => dbYears.add(y));
+    return [...dbYears].sort();
+  }, [reports]);
+
+  // Filtering and Sorting logic
+  const filteredReports = useMemo(() => {
+    let result = reports.filter((report) => {
+      // Search
+      const q = searchQuery.toLowerCase();
+      if (q) {
+        const titleMatch = (report.issue || '').toLowerCase().includes(q);
+        const locationMatch = (report.location || '').toLowerCase().includes(q);
+        const reporterMatch = (report.submittedBy || '').toLowerCase().includes(q);
+        const idMatch = (report.displayId || '').toLowerCase().includes(q);
+        if (!titleMatch && !locationMatch && !reporterMatch && !idMatch) return false;
+      }
+
+      // Month
+      const dateStr = report.createdAt || report.dateSubmitted;
+      if (dateStr) {
+        const d = new Date(dateStr);
+        if (!isNaN(d)) {
+          if (monthFilter !== 'All Months' && MONTHS[d.getMonth()] !== monthFilter) return false;
+          if (yearFilter !== 'All Years' && String(d.getFullYear()) !== yearFilter) return false;
+        }
+      } else {
+        if (monthFilter !== 'All Months' || yearFilter !== 'All Years') return false;
+      }
+
+      // Only show Resolved and Rejected reports in the archive
+      if (report.status !== 'Resolved' && report.status !== 'Rejected') return false;
+
+      // Status
+      if (statusFilter !== 'All Status' && report.status !== statusFilter) return false;
+
+      return true;
+    });
+
+    // Sorting
+    result.sort((a, b) => {
+      const dateA = new Date(a.updatedAt || a.createdAt || a.dateSubmitted).getTime();
+      const dateB = new Date(b.updatedAt || b.createdAt || b.dateSubmitted).getTime();
+      if (sortBy === 'Newest First') {
+        return dateB - dateA;
+      } else {
+        return dateA - dateB;
+      }
+    });
+
+    return result;
+  }, [reports, searchQuery, monthFilter, yearFilter, statusFilter, sortBy]);
+
+  const displayedReports = filteredReports.slice(0, visibleCount);
+
+  const handleClearFilters = () => {
+    setSearchQuery('');
+    setMonthFilter('All Months');
+    setYearFilter('All Years');
+    setStatusFilter('All Status');
+    setSortBy('Newest First');
+    setVisibleCount(10);
+  };
+
   const handleOpenEdit = (report) => {
     setEditingReport(report);
     setRemarks(report.remarks || '');
     setStatusVal(report.status);
-    setPriorityVal(getPriority(report.id));
     setShowRemarksPopup(false);
     setShowImagePopup(false);
   };
@@ -72,10 +158,8 @@ export default function Reports() {
       alert('Please select a status.');
       return;
     }
-
     try {
       await updateReportDetails(editingReport.id, statusVal, null);
-      localStorage.setItem(`report_priority_${editingReport.id}`, priorityVal);
       if (remarks.trim()) {
         await addReportRemark(editingReport.id, remarks);
         setRemarks('');
@@ -88,7 +172,6 @@ export default function Reports() {
 
   const handleAddRemark = async () => {
     if (!currentEditingReport) return;
-
     try {
       await addReportRemark(currentEditingReport.id, remarks);
       setRemarks('');
@@ -99,13 +182,10 @@ export default function Reports() {
 
   const handleDeleteReport = async () => {
     if (!currentEditingReport) return;
-
     const shouldDelete = window.confirm(
       `Delete ${currentEditingReport.displayId}? This will permanently remove the report from the database, resident mobile app, report timeline, notifications, remarks, and admin map.`
     );
-
     if (!shouldDelete) return;
-
     try {
       await deleteReport(currentEditingReport.id);
       setShowRemarksPopup(false);
@@ -116,46 +196,11 @@ export default function Reports() {
     }
   };
 
-  // Filter reports by tab and search query
-  const filteredReports = reports.filter((report) => {
-    // Remove reports that have been resolved or rejected after 24 hours
-    if (report.status === 'Resolved' || report.status === 'Rejected') {
-      const lastUpdated = report.updatedAt ? new Date(report.updatedAt) : new Date(report.createdAt || report.dateSubmitted);
-      const now = new Date();
-      const diffMs = now.getTime() - lastUpdated.getTime();
-      const diffHours = diffMs / (1000 * 60 * 60);
-      if (diffHours > 24) {
-        return false;
-      }
-    }
-
-    const matchesTab = activeTab === 'All' || report.status === activeTab;
-    const matchesSearch = 
-      report.issue.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      report.location.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      report.submittedBy.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      report.displayId.toLowerCase().includes(searchQuery.toLowerCase());
-    
-    return matchesTab && matchesSearch;
-  });
-
-  // Sort by priority severity weight, then by creation date descending
-  filteredReports.sort((a, b) => {
-    const severityA = severityWeight[getPriority(a.id)] ?? 0;
-    const severityB = severityWeight[getPriority(b.id)] ?? 0;
-    if (severityB !== severityA) {
-      return severityB - severityA;
-    }
-    const dateA = new Date(a.createdAt || a.dateSubmitted).getTime();
-    const dateB = new Date(b.createdAt || b.dateSubmitted).getTime();
-    return dateB - dateA;
-  });
-
   return (
-    <div>
+    <div className="archive-page-container">
       {loading && (
         <div className="card" style={{ padding: '30px', marginBottom: '20px', color: '#64748b' }}>
-          Loading reports...
+          Loading archive...
         </div>
       )}
 
@@ -165,90 +210,186 @@ export default function Reports() {
         </div>
       )}
 
-      {/* Filter Tabs + Search on the same row */}
-      <div className="controls-row" style={{ marginBottom: '24px' }}>
-        <div className="filter-tabs">
-          {tabs.map((tab) => (
-            <button
-              key={tab}
-              className={`filter-tab ${activeTab === tab ? 'active' : ''}`}
-              onClick={() => setActiveTab(tab)}
-            >
-              {tab}
-            </button>
-          ))}
-        </div>
-
-        {/* Search Field */}
-        <div className="search-input-wrapper">
-          <Search className="search-icon" size={18} />
+      {/* Filters Section */}
+      <div className="archive-filters-row">
+        <div className="archive-search-wrapper">
+          <Search className="archive-search-icon" size={18} />
           <input
             type="text"
-            placeholder="Search report..."
-            className="search-input"
+            placeholder="Search report title or location..."
+            className="archive-search-input"
             value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
+            onChange={(e) => { setSearchQuery(e.target.value); setVisibleCount(10); }}
           />
           {searchQuery && (
-            <span className="clear-search-icon" onClick={() => setSearchQuery('')}>
+            <span className="archive-clear-search" onClick={() => { setSearchQuery(''); setVisibleCount(10); }}>
               <X size={16} />
             </span>
           )}
         </div>
+
+        <div className="archive-dropdowns">
+          {/* Month */}
+          <div className="archive-dropdown-group">
+            <span className="archive-dropdown-label">Month</span>
+            <div className="archive-select-container">
+              <Calendar className="archive-select-icon" size={16} />
+              <select
+                value={monthFilter}
+                onChange={(e) => { setMonthFilter(e.target.value); setVisibleCount(10); }}
+                className="archive-select"
+              >
+                <option value="All Months">All Months</option>
+                {MONTHS.map((m) => (
+                  <option key={m} value={m}>{m}</option>
+                ))}
+              </select>
+              <ChevronDown className="archive-select-arrow" size={14} />
+            </div>
+          </div>
+
+          {/* Year */}
+          <div className="archive-dropdown-group">
+            <span className="archive-dropdown-label">Year</span>
+            <div className="archive-select-container">
+              <Calendar className="archive-select-icon" size={16} />
+              <select
+                value={yearFilter}
+                onChange={(e) => { setYearFilter(e.target.value); setVisibleCount(10); }}
+                className="archive-select"
+              >
+                <option value="All Years">All Years</option>
+                {availableYears.map((y) => (
+                  <option key={y} value={y}>{y}</option>
+                ))}
+              </select>
+              <ChevronDown className="archive-select-arrow" size={14} />
+            </div>
+          </div>
+
+          {/* Status */}
+          <div className="archive-dropdown-group">
+            <span className="archive-dropdown-label">Status</span>
+            <div className="archive-select-container">
+              <select
+                value={statusFilter}
+                onChange={(e) => { setStatusFilter(e.target.value); setVisibleCount(10); }}
+                className="archive-select no-icon"
+              >
+                <option value="All Status">All Status</option>
+                <option value="Resolved">Resolved</option>
+                <option value="Rejected">Rejected</option>
+              </select>
+              <ChevronDown className="archive-select-arrow" size={14} />
+            </div>
+          </div>
+
+          {/* Sort By */}
+          <div className="archive-dropdown-group">
+            <span className="archive-dropdown-label">Sort By</span>
+            <div className="archive-select-container">
+              <select
+                value={sortBy}
+                onChange={(e) => { setSortBy(e.target.value); setVisibleCount(10); }}
+                className="archive-select no-icon"
+              >
+                <option value="Newest First">Newest First</option>
+                <option value="Oldest First">Oldest First</option>
+              </select>
+              <ChevronDown className="archive-select-arrow" size={14} />
+            </div>
+          </div>
+
+          {/* Clear Filters */}
+          <button className="archive-btn-clear" onClick={handleClearFilters}>
+            <Filter size={16} />
+            <span>Clear Filters</span>
+          </button>
+        </div>
       </div>
 
-      {/* Reports Table Container */}
-      <div className="card" style={{ padding: '8px 24px 24px' }}>
+      {/* Info Banner */}
+      <div className="archive-info-banner">
+        <div className="archive-info-left">
+          <Info size={18} className="archive-info-icon" />
+          <span>
+            Showing reports for{' '}
+            <strong>
+              {monthFilter === 'All Months' ? '' : `${monthFilter} `}
+              {yearFilter === 'All Years' ? 'All Time' : yearFilter}
+            </strong>
+          </span>
+        </div>
+        <div className="archive-info-right">
+          <strong>{filteredReports.length}</strong> reports found
+        </div>
+      </div>
+
+      {/* Table Card */}
+      <div className="card archive-table-card">
         <div className="table-container">
-          <table className="custom-table">
+          <table className="custom-table archive-table">
             <thead>
               <tr>
-                <th>Title</th>
-                <th>Location</th>
-                <th>Reporter</th>
-                <th>Priority</th>
-                <th>Status</th>
-                <th>Date Submitted</th>
-                <th style={{ textAlign: 'right' }}>Actions</th>
+                <th style={{ width: '50px' }}>#</th>
+                <th>Report Details</th>
+                <th style={{ width: '130px' }}>Status</th>
+                <th style={{ width: '180px' }}>Date Reported</th>
+                <th style={{ width: '180px' }}>Last Updated</th>
+                <th style={{ width: '100px', textAlign: 'center' }}>Actions</th>
               </tr>
             </thead>
             <tbody>
-              {filteredReports.length > 0 ? (
-                filteredReports.map((report) => (
-                  <tr key={report.id}>
-                    <td>{report.issue}</td>
-                    <td>{report.location}</td>
-                    <td>{report.submittedBy || 'Anonymous'}</td>
-                    <td>
-                      {getPriority(report.id) ? (
-                        <span className={`priority-badge priority-${getPriority(report.id).toLowerCase()}`}>
-                          {getPriority(report.id)}
+              {displayedReports.length > 0 ? (
+                displayedReports.map((report, index) => {
+                  const displayIndex = index + 1;
+                  return (
+                    <tr key={report.id}>
+                      <td className="archive-row-number">{displayIndex}</td>
+                      <td>
+                        <div className="archive-details-cell">
+                          <img
+                            src={report.imageUrl || cloggedDrainImg}
+                            alt="Report"
+                            className="archive-report-thumb"
+                            onClick={() => handleOpenEdit(report)}
+                          />
+                          <div className="archive-details-text">
+                            <span className="archive-details-title" onClick={() => handleOpenEdit(report)}>
+                              {report.issue}
+                            </span>
+                            <div className="archive-details-loc">
+                              <span className="archive-loc-pin">📍</span>
+                              <span className="archive-loc-text">{report.location}</span>
+                            </div>
+                          </div>
+                        </div>
+                      </td>
+                      <td>
+                        <span className={`status-badge ${report.statusClass}`}>
+                          {report.status}
                         </span>
-                      ) : (
-                        ''
-                      )}
-                    </td>
-                    <td>
-                      <span className={`status-badge ${report.statusClass}`}>
-                        {report.status}
-                      </span>
-                    </td>
-                    <td>{report.dateSubmitted}</td>
-                    <td style={{ textAlign: 'right' }}>
-                      <button
-                        className="btn-delete"
-                        onClick={() => handleOpenEdit(report)}
-                        title="Edit report details"
-                        style={{ color: '#000000' }}
-                      >
-                        <Edit size={16} />
-                      </button>
-                    </td>
-                  </tr>
-                ))
+                      </td>
+                      <td className="archive-date-cell">{report.dateSubmitted}</td>
+                      <td className="archive-date-cell">
+                        {report.updatedAt ? formatDate(report.updatedAt) : report.dateSubmitted}
+                      </td>
+                      <td style={{ textAlign: 'center' }}>
+                        <button
+                          className="archive-btn-view"
+                          onClick={() => handleOpenEdit(report)}
+                          title="View Details"
+                        >
+                          <Eye size={14} className="archive-btn-view-icon" />
+                          <span>View</span>
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })
               ) : (
                 <tr>
-                  <td colSpan="6" style={{ textAlign: 'center', padding: '40px', color: '#64748b' }}>
+                  <td colSpan="6" className="archive-empty-state">
                     No reports match your filters.
                   </td>
                 </tr>
@@ -256,17 +397,41 @@ export default function Reports() {
             </tbody>
           </table>
         </div>
+
+        {/* Center Bottom Show More Button */}
+        {filteredReports.length > visibleCount && (
+          <div style={{ display: 'flex', justifyContent: 'center', marginTop: '24px', paddingTop: '20px', borderTop: '1px solid var(--border)' }}>
+            <button
+              onClick={() => setVisibleCount((prev) => prev + 10)}
+              style={{
+                padding: '10px 24px',
+                borderRadius: '10px',
+                border: '1px solid var(--primary)',
+                backgroundColor: 'white',
+                color: 'var(--primary)',
+                fontSize: '14px',
+                fontWeight: '600',
+                cursor: 'pointer',
+                transition: 'all 0.2s',
+                boxShadow: 'var(--shadow-sm)'
+              }}
+              onMouseOver={(e) => { e.currentTarget.style.backgroundColor = '#eff6ff'; }}
+              onMouseOut={(e) => { e.currentTarget.style.backgroundColor = 'white'; }}
+            >
+              Show More
+            </button>
+          </div>
+        )}
       </div>
 
-      {/* Edit Details Popup Modal */}
+      {/* Edit/View Modal Popup */}
       {currentEditingReport && (
         <div className="modal-overlay report-modal-overlay" onClick={() => setEditingReport(null)}>
           <div className="report-modal-content" onClick={(e) => e.stopPropagation()}>
             
-            {/* Back Button Link */}
             <button className="back-link" onClick={() => setEditingReport(null)}>
               <ChevronLeft size={20} />
-              <span>Back to Reports</span>
+              <span>Back to Archive</span>
             </button>
 
             <div className="report-modal-grid">
@@ -330,7 +495,6 @@ export default function Reports() {
                   />
                 </button>
               </section>
-
             </div>
 
             <div className="report-timeline-section">
@@ -357,72 +521,35 @@ export default function Reports() {
               )}
             </div>
 
-            {/* Bottom edit inputs form */}
             <form className="report-action-form" onSubmit={handleSave}>
               <div className="report-edit-controls">
-                
-                {/* Remarks field */}
                 <div className="report-form-field">
-                  <div className="remarks-header-row">
-                    <label className="form-label" style={{ fontWeight: '600' }}>Admin Remark</label>
+                  <div className="remarks-header-row" style={{ flexDirection: 'column', alignItems: 'flex-start', gap: '8px' }}>
+                    <label className="form-label" style={{ fontWeight: '600', marginBottom: 0 }}>Admin Remarks</label>
                     <button
                       type="button"
                       className="btn-show-remarks"
                       onClick={() => setShowRemarksPopup(true)}
+                      style={{ paddingLeft: 0, background: 'none', border: 'none', color: 'var(--primary)', cursor: 'pointer', fontWeight: '600' }}
                     >
                       Show all remarks ({currentReportRemarks.length})
                     </button>
                   </div>
-                  <textarea
-                    placeholder="Enter admin note..."
-                    className="remarks-input-box"
-                    value={remarks}
-                    onChange={(e) => setRemarks(e.target.value)}
-                  />
-                  <button
-                    type="button"
-                    className="btn-save-remark"
-                    onClick={handleAddRemark}
-                    disabled={!remarks.trim()}
-                  >
-                    Save Remark
-                  </button>
                 </div>
 
-                {/* Dropdown status selection */}
                 <div className="report-form-field">
-                  <label className="form-label" style={{ fontWeight: '600' }}>Update Status To</label>
+                  <label className="form-label" style={{ fontWeight: '600' }}>Archived Status</label>
                   <select
                     className="status-select-box"
                     value={statusVal}
-                    onChange={(e) => setStatusVal(e.target.value)}
+                    disabled
                   >
-                    <option value="Pending">Pending</option>
-                    <option value="In Progress">In Progress</option>
                     <option value="Resolved">Resolved</option>
                     <option value="Rejected">Rejected</option>
                   </select>
                 </div>
-
-                <div className="report-form-field">
-                  <label className="form-label" style={{ fontWeight: '600' }}>Priority Level</label>
-                  <select
-                    className="status-select-box"
-                    value={priorityVal}
-                    onChange={(e) => setPriorityVal(e.target.value)}
-                    style={{ color: priorityVal === '' ? '#94a3b8' : 'var(--text-dark)' }}
-                  >
-                    <option value="" style={{ color: '#94a3b8' }} hidden>Set Priority</option>
-                    <option value="Low" style={{ color: 'var(--text-dark)' }}>Low</option>
-                    <option value="Medium" style={{ color: 'var(--text-dark)' }}>Medium</option>
-                    <option value="High" style={{ color: 'var(--text-dark)' }}>High</option>
-                    <option value="Critical" style={{ color: 'var(--text-dark)' }}>Critical</option>
-                  </select>
-                </div>
-
               </div>
 
-              {/* Submit Buttons */}
               <div className="notif-btn-row report-modal-actions">
                 {isSuperAdmin && (
                   <button
@@ -441,19 +568,14 @@ export default function Reports() {
                     setShowRemarksPopup(false);
                     setEditingReport(null);
                   }}
+                  style={{ minWidth: '100px' }}
                 >
-                  Cancel
-                </button>
-                <button 
-                  type="submit" 
-                  className="btn-send-notif" 
-                >
-                  Update Status
+                  Close
                 </button>
               </div>
             </form>
-
           </div>
+
           {showRemarksPopup && (
             <div className="remarks-popup-overlay" onClick={() => setShowRemarksPopup(false)}>
               <div className="remarks-popup-card" onClick={(e) => e.stopPropagation()}>
@@ -492,6 +614,7 @@ export default function Reports() {
               </div>
             </div>
           )}
+
           {showImagePopup && (
             <div className="image-popup-overlay" onClick={() => setShowImagePopup(false)}>
               <div className="image-popup-card" onClick={(e) => e.stopPropagation()}>

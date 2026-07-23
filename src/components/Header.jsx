@@ -20,6 +20,8 @@ export default function Header() {
         return 'Dashboard';
       case '/reports':
         return 'All Reports';
+      case '/archive':
+        return 'Report Archive';
       case '/map':
         return 'Reports Map View';
       case '/residents':
@@ -37,6 +39,8 @@ export default function Header() {
         return 'Welcome Back, Admin!';
       case '/reports':
         return 'View and manage all submitted reports';
+      case '/archive':
+        return 'View and manage all your previously submitted reports';
       case '/map':
         return 'Visualize report locations on the map';
       case '/residents':

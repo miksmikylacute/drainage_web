@@ -194,3 +194,34 @@ a {
   align-items: center;
   justify-content: center;
 }
+
+/* Priority Badges */
+.priority-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 6px 16px;
+  border-radius: 20px;
+  font-size: 14px;
+  font-weight: 600;
+  text-align: center;
+}
+
+.priority-badge.priority-low {
+  background-color: #f1f5f9;
+  color: #475569;
+}
+
+.priority-badge.priority-medium {
+  background-color: #eff6ff;
+  color: #1d4ed8;
+}
+
+.priority-badge.priority-high {
+  background-color: #fff7ed;
+  color: #ea580c;
+}
+
+.priority-badge.priority-critical {
+  background-color: #fef2f2;
+  color: #dc2626;
+}

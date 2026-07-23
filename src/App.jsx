@@ -5,6 +5,7 @@ import Layout from './components/Layout';
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
 import Reports from './pages/Reports';
+import ReportArchive from './pages/ReportArchive';
 import MapView from './pages/MapView';
 import Residents from './pages/Residents';
 import Notifications from './pages/Notifications';
@@ -32,6 +33,7 @@ export default function App() {
           <Route element={<ProtectedLayout />}>
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/reports" element={<Reports />} />
+            <Route path="/archive" element={<ReportArchive />} />
             <Route path="/map" element={<MapView />} />
             <Route path="/residents" element={<Residents />} />
             <Route path="/notifications" element={<Notifications />} />
