@@ -4,8 +4,9 @@ import { useApp } from '../context/useApp';
 import { ChevronRight, CircleDot, ShieldCheck, UserCog, Users } from 'lucide-react';
 import {
   buildReportMarkerSvg,
+  DEFAULT_MAP_ZOOM,
   getReportStatusColor,
-  hasReportCoordinates,
+  isReportVisibleOnMap,
   MAUBAN_BOUNDS,
   MAUBAN_CENTER,
   REPORT_STATUS_LEGEND,
@@ -29,7 +30,7 @@ function DashboardMiniMap({ reports }) {
 
       const map = L.map(mapRef.current, {
         center: MAUBAN_CENTER,
-        zoom: 13,
+        zoom: DEFAULT_MAP_ZOOM,
         minZoom: 11,
         maxZoom: 18,
         maxBounds: MAUBAN_BOUNDS,
@@ -68,7 +69,7 @@ function DashboardMiniMap({ reports }) {
       markersRef.current.forEach((marker) => marker.remove());
       markersRef.current = [];
 
-      const geoReports = reports.filter(hasReportCoordinates);
+      const geoReports = reports.filter(isReportVisibleOnMap);
 
       geoReports.forEach((report) => {
         const icon = L.divIcon({
@@ -90,7 +91,7 @@ function DashboardMiniMap({ reports }) {
         );
         map.fitBounds(bounds.pad(0.25), { maxZoom: 16 });
       } else {
-        map.setView(MAUBAN_CENTER, 13);
+        map.setView(MAUBAN_CENTER, DEFAULT_MAP_ZOOM);
       }
     }
 
@@ -118,17 +119,17 @@ export default function Dashboard() {
   const pctRejected = 100 - pctPending - pctInProgress - pctResolved;
 
   const conicGradient = `conic-gradient(
-    #FFC107 0% ${pctPending}%,
-    #3B82F6 ${pctPending}% ${pctPending + pctInProgress}%,
-    #22C55E ${pctPending + pctInProgress}% ${pctPending + pctInProgress + pctResolved}%,
-    #EF4444 ${pctPending + pctInProgress + pctResolved}% 100%
+    #ef4444 0% ${pctPending}%,
+    #2563eb ${pctPending}% ${pctPending + pctInProgress}%,
+    #10b981 ${pctPending + pctInProgress}% ${pctPending + pctInProgress + pctResolved}%,
+    #8b5cf6 ${pctPending + pctInProgress + pctResolved}% 100%
   )`;
 
   const statusChartItems = [
-    { label: 'Pending', count: pendingCount, pct: pctPending, color: '#FFC107' },
-    { label: 'In Progress', count: inProgressCount, pct: pctInProgress, color: '#3B82F6' },
-    { label: 'Resolved', count: resolvedCount, pct: pctResolved, color: '#22C55E' },
-    { label: 'Rejected', count: rejectedCount, pct: pctRejected, color: '#EF4444' }
+    { label: 'Pending', count: pendingCount, pct: pctPending, color: '#ef4444' },
+    { label: 'In Progress', count: inProgressCount, pct: pctInProgress, color: '#2563eb' },
+    { label: 'Resolved', count: resolvedCount, pct: pctResolved, color: '#10b981' },
+    { label: 'Rejected', count: rejectedCount, pct: pctRejected, color: '#8b5cf6' }
   ];
 
   // Limit recent reports table to latest 3 reports
@@ -162,25 +163,25 @@ export default function Dashboard() {
         <div className="stat-card-wrapper">
           <div className="card stat-card pending">
             <span className="stat-title">Pending</span>
-            <span className="stat-value" style={{ color: '#FFC107' }}>{pendingCount}</span>
+            <span className="stat-value" style={{ color: '#ef4444' }}>{pendingCount}</span>
           </div>
         </div>
         <div className="stat-card-wrapper">
           <div className="card stat-card inprogress">
             <span className="stat-title">In Progress</span>
-            <span className="stat-value" style={{ color: '#3B82F6' }}>{inProgressCount}</span>
+            <span className="stat-value" style={{ color: '#2563eb' }}>{inProgressCount}</span>
           </div>
         </div>
         <div className="stat-card-wrapper">
           <div className="card stat-card resolved">
             <span className="stat-title">Resolved</span>
-            <span className="stat-value" style={{ color: '#22C55E' }}>{resolvedCount}</span>
+            <span className="stat-value" style={{ color: '#10b981' }}>{resolvedCount}</span>
           </div>
         </div>
         <div className="stat-card-wrapper">
           <div className="card stat-card rejected">
             <span className="stat-title">Rejected</span>
-            <span className="stat-value" style={{ color: '#EF4444' }}>{rejectedCount}</span>
+            <span className="stat-value" style={{ color: '#8b5cf6' }}>{rejectedCount}</span>
           </div>
         </div>
       </div>
@@ -256,7 +257,7 @@ export default function Dashboard() {
             <div className="pie-legend">
               <div className="legend-item">
                 <div className="legend-label-group">
-                  <div className="legend-color" style={{ backgroundColor: '#FFC107' }} />
+                  <div className="legend-color" style={{ backgroundColor: '#ef4444' }} />
                   <span>Pending</span>
                 </div>
                 <span className="legend-value">{pendingCount} ({pctPending}%)</span>

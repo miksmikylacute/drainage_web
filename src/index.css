@@ -11,13 +11,13 @@
   --text-muted: #64748b;
   --border: #e2e8f0;
   
-  --status-resolved: #22C55E;
+  --status-resolved: #10b981;
   --status-resolved-bg: #e6fcf2;
-  --status-inprogress: #3B82F6;
+  --status-inprogress: #2563eb;
   --status-inprogress-bg: #ebf5ff;
-  --status-rejected: #EF4444;
+  --status-rejected: #8b5cf6;
   --status-rejected-bg: #fef2f2;
-  --status-pending: #FFC107;
+  --status-pending: #ef4444;
   --status-pending-bg: #fff9e6;
 
   --font-family: 'Inter', system-ui, -apple-system, sans-serif;

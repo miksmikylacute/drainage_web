@@ -107,16 +107,16 @@
 }
 
 .stat-card.pending {
-  background-color: #fffbeb;
-  border-color: #fde68a;
+  background-color: #fef2f2;
+  border-color: #fecaca;
 }
 
 .stat-card.pending .stat-title {
-  color: #d97706;
+  color: #dc2626;
 }
 
 .stat-card.pending .stat-value {
-  color: #b45309;
+  color: #b91c1c;
 }
 
 .stat-card.inprogress {
@@ -146,16 +146,16 @@
 }
 
 .stat-card.rejected {
-  background-color: #fef2f2;
-  border-color: #fecaca;
+  background-color: #f5f3ff;
+  border-color: #ddd6fe;
 }
 
 .stat-card.rejected .stat-title {
-  color: #dc2626;
+  color: #7c3aed;
 }
 
 .stat-card.rejected .stat-value {
-  color: #b91c1c;
+  color: #6d28d9;
 }
 
 .section-header {
@@ -229,15 +229,15 @@
 }
 
 .legend-color.inprogress {
-  background-color: #3B82F6;
+  background-color: #2563eb;
 }
 
 .legend-color.resolved {
-  background-color: #22C55E;
+  background-color: #10b981;
 }
 
 .legend-color.rejected {
-  background-color: #EF4444;
+  background-color: #8b5cf6;
 }
 
 .legend-value {

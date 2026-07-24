@@ -5,6 +5,7 @@ import {
   Search, X, Calendar, Filter, Eye, ChevronLeft, ChevronRight, Trash2, Info, ChevronDown
 } from 'lucide-react';
 import cloggedDrainImg from '../assets/clogged_drain.png';
+import { isReportVisibleOnMap } from '../lib/reportMapMarkers';
 import '../css/reports.css';
 import '../css/archive.css';
 
@@ -14,6 +15,7 @@ const MONTHS = [
 ];
 
 const STATIC_YEARS = ['2026', '2027', '2028'];
+const ITEMS_PER_PAGE = 10;
 
 // Helper to format date nicely
 function formatDate(value) {
@@ -46,12 +48,11 @@ export default function ReportArchive() {
   const initialSearch = searchParams.get('search') || '';
   const [searchQuery, setSearchQuery] = useState(initialSearch);
 
-  // Defaults to match second screenshot (July 2026)
-  const [monthFilter, setMonthFilter] = useState('July');
-  const [yearFilter, setYearFilter] = useState('2026');
+  const [monthFilter, setMonthFilter] = useState('All Months');
+  const [yearFilter, setYearFilter] = useState('All Years');
   const [statusFilter, setStatusFilter] = useState('All Status');
   const [sortBy, setSortBy] = useState('Newest First');
-  const [visibleCount, setVisibleCount] = useState(10);
+  const [currentPage, setCurrentPage] = useState(1);
 
   // Edit/View Modal State
   const [editingReport, setEditingReport] = useState(null);
@@ -133,7 +134,18 @@ export default function ReportArchive() {
     return result;
   }, [reports, searchQuery, monthFilter, yearFilter, statusFilter, sortBy]);
 
-  const displayedReports = filteredReports.slice(0, visibleCount);
+  const totalPages = Math.max(1, Math.ceil(filteredReports.length / ITEMS_PER_PAGE));
+  const safeCurrentPage = Math.min(currentPage, totalPages);
+  const startIndex = (safeCurrentPage - 1) * ITEMS_PER_PAGE;
+  const displayedReports = filteredReports.slice(startIndex, startIndex + ITEMS_PER_PAGE);
+  const firstPageButton = Math.max(1, Math.min(safeCurrentPage - 2, totalPages - 4));
+  const lastPageButton = Math.min(totalPages, firstPageButton + 4);
+  const pageNumbers = Array.from(
+    { length: lastPageButton - firstPageButton + 1 },
+    (_, index) => firstPageButton + index
+  );
+
+  const resetToFirstPage = () => setCurrentPage(1);
 
   const handleClearFilters = () => {
     setSearchQuery('');
@@ -141,7 +153,7 @@ export default function ReportArchive() {
     setYearFilter('All Years');
     setStatusFilter('All Status');
     setSortBy('Newest First');
-    setVisibleCount(10);
+    resetToFirstPage();
   };
 
   const handleOpenEdit = (report) => {
@@ -167,16 +179,6 @@ export default function ReportArchive() {
       setEditingReport(null);
     } catch (saveError) {
       alert(saveError.message || 'Unable to update report.');
-    }
-  };
-
-  const handleAddRemark = async () => {
-    if (!currentEditingReport) return;
-    try {
-      await addReportRemark(currentEditingReport.id, remarks);
-      setRemarks('');
-    } catch (remarkError) {
-      alert(remarkError.message || 'Unable to save remark.');
     }
   };
 
@@ -219,10 +221,10 @@ export default function ReportArchive() {
             placeholder="Search report title or location..."
             className="archive-search-input"
             value={searchQuery}
-            onChange={(e) => { setSearchQuery(e.target.value); setVisibleCount(10); }}
+            onChange={(e) => { setSearchQuery(e.target.value); resetToFirstPage(); }}
           />
           {searchQuery && (
-            <span className="archive-clear-search" onClick={() => { setSearchQuery(''); setVisibleCount(10); }}>
+            <span className="archive-clear-search" onClick={() => { setSearchQuery(''); resetToFirstPage(); }}>
               <X size={16} />
             </span>
           )}
@@ -236,7 +238,7 @@ export default function ReportArchive() {
               <Calendar className="archive-select-icon" size={16} />
               <select
                 value={monthFilter}
-                onChange={(e) => { setMonthFilter(e.target.value); setVisibleCount(10); }}
+                onChange={(e) => { setMonthFilter(e.target.value); resetToFirstPage(); }}
                 className="archive-select"
               >
                 <option value="All Months">All Months</option>
@@ -255,7 +257,7 @@ export default function ReportArchive() {
               <Calendar className="archive-select-icon" size={16} />
               <select
                 value={yearFilter}
-                onChange={(e) => { setYearFilter(e.target.value); setVisibleCount(10); }}
+                onChange={(e) => { setYearFilter(e.target.value); resetToFirstPage(); }}
                 className="archive-select"
               >
                 <option value="All Years">All Years</option>
@@ -273,7 +275,7 @@ export default function ReportArchive() {
             <div className="archive-select-container">
               <select
                 value={statusFilter}
-                onChange={(e) => { setStatusFilter(e.target.value); setVisibleCount(10); }}
+                onChange={(e) => { setStatusFilter(e.target.value); resetToFirstPage(); }}
                 className="archive-select no-icon"
               >
                 <option value="All Status">All Status</option>
@@ -290,7 +292,7 @@ export default function ReportArchive() {
             <div className="archive-select-container">
               <select
                 value={sortBy}
-                onChange={(e) => { setSortBy(e.target.value); setVisibleCount(10); }}
+                onChange={(e) => { setSortBy(e.target.value); resetToFirstPage(); }}
                 className="archive-select no-icon"
               >
                 <option value="Newest First">Newest First</option>
@@ -342,7 +344,7 @@ export default function ReportArchive() {
             <tbody>
               {displayedReports.length > 0 ? (
                 displayedReports.map((report, index) => {
-                  const displayIndex = index + 1;
+                  const displayIndex = startIndex + index + 1;
                   return (
                     <tr key={report.id}>
                       <td className="archive-row-number">{displayIndex}</td>
@@ -398,28 +400,41 @@ export default function ReportArchive() {
           </table>
         </div>
 
-        {/* Center Bottom Show More Button */}
-        {filteredReports.length > visibleCount && (
-          <div style={{ display: 'flex', justifyContent: 'center', marginTop: '24px', paddingTop: '20px', borderTop: '1px solid var(--border)' }}>
-            <button
-              onClick={() => setVisibleCount((prev) => prev + 10)}
-              style={{
-                padding: '10px 24px',
-                borderRadius: '10px',
-                border: '1px solid var(--primary)',
-                backgroundColor: 'white',
-                color: 'var(--primary)',
-                fontSize: '14px',
-                fontWeight: '600',
-                cursor: 'pointer',
-                transition: 'all 0.2s',
-                boxShadow: 'var(--shadow-sm)'
-              }}
-              onMouseOver={(e) => { e.currentTarget.style.backgroundColor = '#eff6ff'; }}
-              onMouseOut={(e) => { e.currentTarget.style.backgroundColor = 'white'; }}
-            >
-              Show More
-            </button>
+        {filteredReports.length > 0 && (
+          <div className="archive-pagination-container">
+            <div className="archive-pagination-info">
+              Showing {startIndex + 1} to {Math.min(startIndex + ITEMS_PER_PAGE, filteredReports.length)} of {filteredReports.length} reports
+            </div>
+            <div className="archive-pagination-controls">
+              <button
+                type="button"
+                className="archive-page-btn"
+                disabled={safeCurrentPage === 1}
+                onClick={() => setCurrentPage((page) => Math.max(1, page - 1))}
+                aria-label="Previous page"
+              >
+                <ChevronLeft size={16} />
+              </button>
+              {pageNumbers.map((page) => (
+                <button
+                  key={page}
+                  type="button"
+                  className={`archive-page-btn ${safeCurrentPage === page ? 'active' : ''}`}
+                  onClick={() => setCurrentPage(page)}
+                >
+                  {page}
+                </button>
+              ))}
+              <button
+                type="button"
+                className="archive-page-btn"
+                disabled={safeCurrentPage === totalPages}
+                onClick={() => setCurrentPage((page) => Math.min(totalPages, page + 1))}
+                aria-label="Next page"
+              >
+                <ChevronRight size={16} />
+              </button>
+            </div>
           </div>
         )}
       </div>
@@ -443,7 +458,7 @@ export default function ReportArchive() {
                 </div>
                 <div className="report-detail-row">
                   <span className="report-detail-label">Location</span>
-                  {currentEditingReport.latitude && currentEditingReport.longitude ? (
+                  {isReportVisibleOnMap(currentEditingReport) ? (
                     <span 
                       className="report-detail-value location-link"
                       onClick={() => navigate(`/map?focus=${currentEditingReport.id}`)}

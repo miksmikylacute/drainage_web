@@ -94,6 +94,12 @@
   border: none !important;
 }
 
+.map-custom-icon svg,
+.map-custom-icon path,
+.map-custom-icon circle {
+  pointer-events: none;
+}
+
 /* ─── Leaflet Popup Overrides ─────────────────────────────────── */
 
 .lf-popup-wrapper .leaflet-popup-content-wrapper {

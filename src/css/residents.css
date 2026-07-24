@@ -64,6 +64,65 @@
   color: #ef4444;
 }
 
+.residents-pagination-container {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 20px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border);
+}
+
+.residents-pagination-info {
+  font-size: 14px;
+  color: var(--text-muted);
+}
+
+.residents-pagination-controls {
+  display: flex;
+  gap: 6px;
+}
+
+.residents-page-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background-color: white;
+  color: var(--text-dark);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.residents-page-btn:hover:not(:disabled) {
+  background-color: #f8fafc;
+  border-color: var(--text-muted);
+}
+
+.residents-page-btn.active {
+  background-color: var(--primary);
+  color: white;
+  border-color: var(--primary);
+}
+
+.residents-page-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+@media (max-width: 768px) {
+  .residents-pagination-container {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 12px;
+  }
+}
+
 /* Modal styling for adding resident */
 .modal-overlay {
   position: fixed;

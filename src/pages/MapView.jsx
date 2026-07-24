@@ -3,8 +3,9 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useApp } from '../context/useApp';
 import {
   buildReportMarkerSvg,
+  DEFAULT_MAP_ZOOM,
   getReportStatusColor,
-  hasReportCoordinates,
+  isReportVisibleOnMap,
   MAUBAN_BOUNDS,
   MAUBAN_CENTER,
   REPORT_STATUS_LEGEND,
@@ -34,7 +35,7 @@ export default function MapView() {
 
       const map = L.map(mapRef.current, {
         center: MAUBAN_CENTER,
-        zoom: 13,
+        zoom: DEFAULT_MAP_ZOOM,
         minZoom: 11,
         maxZoom: 18,
         maxBounds: MAUBAN_BOUNDS,
@@ -84,7 +85,7 @@ export default function MapView() {
       markersRef.current.forEach((m) => m.remove());
       markersRef.current = [];
 
-      const geoReports = reports.filter(hasReportCoordinates);
+      const geoReports = reports.filter(isReportVisibleOnMap);
       let focusedMarker = null;
 
       geoReports.forEach((report) => {
@@ -108,7 +109,7 @@ export default function MapView() {
               <span class="lf-popup-date">${report.dateSubmitted ?? ''}</span>
               <span class="lf-status lf-status-${report.statusClass ?? ''}">${report.status ?? ''}</span>
             </div>
-            <button class="lf-popup-btn" data-id="${report.displayId ?? report.id}">View details</button>
+            <button class="lf-popup-btn" data-report-id="${report.id}" data-report-status="${report.status ?? ''}">View details</button>
           </div>`;
 
         marker.bindPopup(popupHtml, { maxWidth: 240, className: 'lf-popup-wrapper' });
@@ -117,7 +118,11 @@ export default function MapView() {
         marker.on('popupopen', () => {
           const btn = mapRef.current?.querySelector('.lf-popup-btn');
           if (btn) {
-            btn.onclick = () => navigate(`/reports?search=${btn.dataset.id}`);
+            const params = new URLSearchParams({
+              focus: btn.dataset.reportId,
+              status: btn.dataset.reportStatus,
+            });
+            btn.onclick = () => navigate(`/reports?${params.toString()}`);
           }
         });
 
@@ -135,7 +140,9 @@ export default function MapView() {
         const bounds = L.latLngBounds(
           geoReports.map((report) => [report.latitude, report.longitude])
         );
-        map.fitBounds(bounds.pad(0.2), { maxZoom: 17 });
+        map.fitBounds(bounds.pad(0.2), { maxZoom: 18 });
+      } else {
+        map.setView(MAUBAN_CENTER, DEFAULT_MAP_ZOOM);
       }
     }
 
@@ -145,7 +152,7 @@ export default function MapView() {
   return (
     <div className="map-page-wrapper">
       <div className="map-header">
-        <p className="map-page-sub">Showing drainage reports in Mauban, Quezon</p>
+        <p className="map-page-sub">Showing active and rejected drainage reports in Mauban, Quezon</p>
         <div className="map-legend" aria-label="Report status legend">
           {REPORT_STATUS_LEGEND.map((item) => (
             <span key={item.status} className="map-legend-item">

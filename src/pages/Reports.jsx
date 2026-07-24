@@ -1,9 +1,13 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { useApp } from '../context/useApp';
-import { Search, X, Edit, ChevronLeft, Trash2 } from 'lucide-react';
+import { Search, X, Edit, ChevronLeft, ChevronRight, Trash2 } from 'lucide-react';
 import cloggedDrainImg from '../assets/clogged_drain.png';
+import { isReportVisibleOnMap } from '../lib/reportMapMarkers';
 import '../css/reports.css';
+
+const REPORT_TABS = ['All', 'Pending', 'In Progress', 'Resolved', 'Rejected'];
+const ITEMS_PER_PAGE = 10;
 
 export default function Reports() {
   const {
@@ -20,13 +24,16 @@ export default function Reports() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const initialSearch = searchParams.get('search') || '';
+  const focusReportId = searchParams.get('focus') || '';
+  const requestedStatus = searchParams.get('status') || '';
+  const initialTab = REPORT_TABS.includes(requestedStatus) ? requestedStatus : 'All';
   const [searchQuery, setSearchQuery] = useState(initialSearch);
-  const [activeTab, setActiveTab] = useState('All');
+  const [activeTab, setActiveTab] = useState(initialTab);
+  const [currentPage, setCurrentPage] = useState(1);
 
-  // Priority Helpers
   const getPriority = (reportId) => {
-    const saved = localStorage.getItem(`report_priority_${reportId}`);
-    return saved || '';
+    const report = reports.find((item) => item.id === reportId);
+    return report?.priority || '';
   };
 
   const severityWeight = {
@@ -45,7 +52,6 @@ export default function Reports() {
   const [showRemarksPopup, setShowRemarksPopup] = useState(false);
   const [showImagePopup, setShowImagePopup] = useState(false);
 
-  const tabs = ['All', 'Pending', 'In Progress', 'Resolved', 'Rejected'];
   const currentEditingReport = editingReport
     ? reports.find((report) => report.id === editingReport.id) || editingReport
     : null;
@@ -74,8 +80,7 @@ export default function Reports() {
     }
 
     try {
-      await updateReportDetails(editingReport.id, statusVal, null);
-      localStorage.setItem(`report_priority_${editingReport.id}`, priorityVal);
+      await updateReportDetails(editingReport.id, statusVal, null, priorityVal || null);
       if (remarks.trim()) {
         await addReportRemark(editingReport.id, remarks);
         setRemarks('');
@@ -118,23 +123,29 @@ export default function Reports() {
 
   // Filter reports by tab and search query
   const filteredReports = reports.filter((report) => {
+    const isFocusedReport = focusReportId
+      ? report.id === focusReportId || report.displayId === focusReportId
+      : false;
+
     // Remove reports that have been resolved or rejected after 24 hours
     if (report.status === 'Resolved' || report.status === 'Rejected') {
       const lastUpdated = report.updatedAt ? new Date(report.updatedAt) : new Date(report.createdAt || report.dateSubmitted);
       const now = new Date();
       const diffMs = now.getTime() - lastUpdated.getTime();
       const diffHours = diffMs / (1000 * 60 * 60);
-      if (diffHours > 24) {
+      if (diffHours > 24 && !isFocusedReport) {
         return false;
       }
     }
 
     const matchesTab = activeTab === 'All' || report.status === activeTab;
     const matchesSearch = 
+      !searchQuery ||
       report.issue.toLowerCase().includes(searchQuery.toLowerCase()) ||
       report.location.toLowerCase().includes(searchQuery.toLowerCase()) ||
       report.submittedBy.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      report.displayId.toLowerCase().includes(searchQuery.toLowerCase());
+      report.displayId.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      report.id.toLowerCase().includes(searchQuery.toLowerCase());
     
     return matchesTab && matchesSearch;
   });
@@ -150,6 +161,40 @@ export default function Reports() {
     const dateB = new Date(b.createdAt || b.dateSubmitted).getTime();
     return dateB - dateA;
   });
+
+  const focusedReportIndex = focusReportId
+    ? filteredReports.findIndex((report) => report.id === focusReportId || report.displayId === focusReportId)
+    : -1;
+  const totalPages = Math.max(1, Math.ceil(filteredReports.length / ITEMS_PER_PAGE));
+  const focusedReportPage = focusedReportIndex >= 0
+    ? Math.floor(focusedReportIndex / ITEMS_PER_PAGE) + 1
+    : null;
+  const safeCurrentPage = Math.min(focusedReportPage || currentPage, totalPages);
+  const startIndex = (safeCurrentPage - 1) * ITEMS_PER_PAGE;
+  const displayedReports = filteredReports.slice(startIndex, startIndex + ITEMS_PER_PAGE);
+  const firstPageButton = Math.max(1, Math.min(safeCurrentPage - 2, totalPages - 4));
+  const lastPageButton = Math.min(totalPages, firstPageButton + 4);
+  const pageNumbers = Array.from(
+    { length: lastPageButton - firstPageButton + 1 },
+    (_, index) => firstPageButton + index
+  );
+
+  const updatePage = (page) => {
+    const params = new URLSearchParams(searchParams);
+    params.delete('focus');
+    params.delete('status');
+    navigate({
+      pathname: '/reports',
+      search: params.toString(),
+    }, { replace: true });
+    setCurrentPage(page);
+  };
+
+  useEffect(() => {
+    if (!focusReportId) return;
+    const targetRow = document.getElementById(`report-row-${focusReportId}`);
+    targetRow?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }, [focusReportId, filteredReports.length]);
 
   return (
     <div>
@@ -168,11 +213,14 @@ export default function Reports() {
       {/* Filter Tabs + Search on the same row */}
       <div className="controls-row" style={{ marginBottom: '24px' }}>
         <div className="filter-tabs">
-          {tabs.map((tab) => (
+          {REPORT_TABS.map((tab) => (
             <button
               key={tab}
               className={`filter-tab ${activeTab === tab ? 'active' : ''}`}
-              onClick={() => setActiveTab(tab)}
+              onClick={() => {
+                setActiveTab(tab);
+                setCurrentPage(1);
+              }}
             >
               {tab}
             </button>
@@ -187,10 +235,16 @@ export default function Reports() {
             placeholder="Search report..."
             className="search-input"
             value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
+            onChange={(e) => {
+              setSearchQuery(e.target.value);
+              setCurrentPage(1);
+            }}
           />
           {searchQuery && (
-            <span className="clear-search-icon" onClick={() => setSearchQuery('')}>
+            <span className="clear-search-icon" onClick={() => {
+              setSearchQuery('');
+              setCurrentPage(1);
+            }}>
               <X size={16} />
             </span>
           )}
@@ -213,9 +267,18 @@ export default function Reports() {
               </tr>
             </thead>
             <tbody>
-              {filteredReports.length > 0 ? (
-                filteredReports.map((report) => (
-                  <tr key={report.id}>
+              {displayedReports.length > 0 ? (
+                displayedReports.map((report) => {
+                  const isFocusedReport = focusReportId
+                    ? report.id === focusReportId || report.displayId === focusReportId
+                    : false;
+
+                  return (
+                  <tr
+                    key={report.id}
+                    id={`report-row-${report.id}`}
+                    className={isFocusedReport ? 'report-row-highlight' : ''}
+                  >
                     <td>{report.issue}</td>
                     <td>{report.location}</td>
                     <td>{report.submittedBy || 'Anonymous'}</td>
@@ -245,7 +308,8 @@ export default function Reports() {
                       </button>
                     </td>
                   </tr>
-                ))
+                  );
+                })
               ) : (
                 <tr>
                   <td colSpan="6" style={{ textAlign: 'center', padding: '40px', color: '#64748b' }}>
@@ -256,6 +320,43 @@ export default function Reports() {
             </tbody>
           </table>
         </div>
+        {filteredReports.length > 0 && (
+          <div className="reports-pagination-container">
+            <div className="reports-pagination-info">
+              Showing {startIndex + 1} to {Math.min(startIndex + ITEMS_PER_PAGE, filteredReports.length)} of {filteredReports.length} reports
+            </div>
+            <div className="reports-pagination-controls">
+              <button
+                type="button"
+                className="reports-page-btn"
+                disabled={safeCurrentPage === 1}
+                onClick={() => updatePage(Math.max(1, safeCurrentPage - 1))}
+                aria-label="Previous page"
+              >
+                <ChevronLeft size={16} />
+              </button>
+              {pageNumbers.map((page) => (
+                <button
+                  key={page}
+                  type="button"
+                  className={`reports-page-btn ${safeCurrentPage === page ? 'active' : ''}`}
+                  onClick={() => updatePage(page)}
+                >
+                  {page}
+                </button>
+              ))}
+              <button
+                type="button"
+                className="reports-page-btn"
+                disabled={safeCurrentPage === totalPages}
+                onClick={() => updatePage(Math.min(totalPages, safeCurrentPage + 1))}
+                aria-label="Next page"
+              >
+                <ChevronRight size={16} />
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Edit Details Popup Modal */}
@@ -278,7 +379,7 @@ export default function Reports() {
                 </div>
                 <div className="report-detail-row">
                   <span className="report-detail-label">Location</span>
-                  {currentEditingReport.latitude && currentEditingReport.longitude ? (
+                  {isReportVisibleOnMap(currentEditingReport) ? (
                     <span 
                       className="report-detail-value location-link"
                       onClick={() => navigate(`/map?focus=${currentEditingReport.id}`)}

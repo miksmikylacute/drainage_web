@@ -1,4 +1,5 @@
 export const MAUBAN_CENTER = [14.1927, 121.7305];
+export const DEFAULT_MAP_ZOOM = 15;
 
 export const MAUBAN_BOUNDS = [
   [14.0900, 121.6400],
@@ -6,16 +7,15 @@ export const MAUBAN_BOUNDS = [
 ];
 
 export const REPORT_STATUS_COLORS = {
-  Pending: '#FFC107',
-  'In Progress': '#3B82F6',
-  Resolved: '#22C55E',
-  Rejected: '#EF4444',
+  Pending: '#ef4444',
+  'In Progress': '#2563eb',
+  Resolved: '#10b981',
+  Rejected: '#8b5cf6',
 };
 
 export const REPORT_STATUS_LEGEND = [
-  { status: 'Pending', label: 'Pending', color: REPORT_STATUS_COLORS.Pending },
+  { status: 'Pending', label: 'New Report', color: REPORT_STATUS_COLORS.Pending },
   { status: 'In Progress', label: 'In Progress', color: REPORT_STATUS_COLORS['In Progress'] },
-  { status: 'Resolved', label: 'Resolved', color: REPORT_STATUS_COLORS.Resolved },
   { status: 'Rejected', label: 'Rejected', color: REPORT_STATUS_COLORS.Rejected },
 ];
 
@@ -25,6 +25,10 @@ export function getReportStatusColor(status) {
 
 export function hasReportCoordinates(report) {
   return Number.isFinite(report.latitude) && Number.isFinite(report.longitude);
+}
+
+export function isReportVisibleOnMap(report) {
+  return hasReportCoordinates(report) && report.status !== 'Resolved';
 }
 
 export function buildReportMarkerSvg(color, size = 'normal') {

@@ -1,13 +1,16 @@
 import { useState } from 'react';
 import { useApp } from '../context/useApp';
-import { Search, UserPlus, X } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Search, Trash2, UserPlus, X } from 'lucide-react';
 import '../css/residents.css';
+
+const ITEMS_PER_PAGE = 10;
 
 export default function Residents() {
   const { 
     residents, 
     createUser,
     session,
+    deleteUser,
     toggleResidentStatus,
     loading
   } = useApp();
@@ -15,6 +18,7 @@ export default function Residents() {
   
   const [searchQuery, setSearchQuery] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
   
   // Form State
   const [role, setRole] = useState('resident');
@@ -78,6 +82,23 @@ export default function Residents() {
     resetForm();
   };
 
+  const handleDeleteUser = async (user) => {
+    if (!isSuperAdmin || user.role === 'super_admin') return;
+
+    const shouldDelete = window.confirm(
+      `Delete ${user.name}? This will permanently remove the ${user.role} account. Resident reports and related records will be deleted by database cascade.`
+    );
+
+    if (!shouldDelete) return;
+
+    try {
+      await deleteUser(user.id);
+      setSelectedUser((current) => (current?.id === user.id ? null : current));
+    } catch (deleteError) {
+      alert(deleteError.message || 'Unable to delete user.');
+    }
+  };
+
   const visibleUsers = residents.filter((user) => isSuperAdmin || user.role === 'resident');
 
   const filteredUsers = visibleUsers.filter(user => 
@@ -85,6 +106,16 @@ export default function Residents() {
     user.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
     user.contact.includes(searchQuery) ||
     user.role.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+  const totalPages = Math.max(1, Math.ceil(filteredUsers.length / ITEMS_PER_PAGE));
+  const safeCurrentPage = Math.min(currentPage, totalPages);
+  const startIndex = (safeCurrentPage - 1) * ITEMS_PER_PAGE;
+  const displayedUsers = filteredUsers.slice(startIndex, startIndex + ITEMS_PER_PAGE);
+  const firstPageButton = Math.max(1, Math.min(safeCurrentPage - 2, totalPages - 4));
+  const lastPageButton = Math.min(totalPages, firstPageButton + 4);
+  const pageNumbers = Array.from(
+    { length: lastPageButton - firstPageButton + 1 },
+    (_, index) => firstPageButton + index
   );
 
   return (
@@ -98,10 +129,16 @@ export default function Residents() {
               placeholder="Search users..."
               className="search-input"
               value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
+              onChange={(e) => {
+                setSearchQuery(e.target.value);
+                setCurrentPage(1);
+              }}
             />
             {searchQuery && (
-              <span className="clear-search-icon" onClick={() => setSearchQuery('')}>
+              <span className="clear-search-icon" onClick={() => {
+                setSearchQuery('');
+                setCurrentPage(1);
+              }}>
                 <X size={16} />
               </span>
             )}
@@ -137,8 +174,8 @@ export default function Residents() {
               </tr>
             </thead>
             <tbody>
-              {filteredUsers.length > 0 ? (
-                filteredUsers.map((user) => (
+              {displayedUsers.length > 0 ? (
+                displayedUsers.map((user) => (
                   <tr key={user.id}>
                     <td>
                       <div 
@@ -176,19 +213,32 @@ export default function Residents() {
                       </button>
                     </td>
                     <td style={{ textAlign: 'right' }}>
-                      <button
-                        className="btn-secondary"
-                        disabled={user.role === 'super_admin' || (!isSuperAdmin && user.role !== 'resident')}
-                        onClick={async () => {
-                          try {
-                            await toggleResidentStatus(user.id);
-                          } catch (statusError) {
-                            alert(statusError.message || 'Unable to update user status.');
-                          }
-                        }}
-                      >
-                        {user.status === 'Active' ? 'Disable' : 'Enable'}
-                      </button>
+                      <div style={{ display: 'inline-flex', gap: '8px', justifyContent: 'flex-end' }}>
+                        <button
+                          className="btn-secondary"
+                          disabled={user.role === 'super_admin' || (!isSuperAdmin && user.role !== 'resident')}
+                          onClick={async () => {
+                            try {
+                              await toggleResidentStatus(user.id);
+                            } catch (statusError) {
+                              alert(statusError.message || 'Unable to update user status.');
+                            }
+                          }}
+                        >
+                          {user.status === 'Active' ? 'Disable' : 'Enable'}
+                        </button>
+                        {isSuperAdmin && user.role !== 'super_admin' && (
+                          <button
+                            className="btn-secondary"
+                            onClick={() => handleDeleteUser(user)}
+                            style={{ color: '#dc2626', borderColor: '#fecaca', display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+                            title={`Delete ${user.role} account`}
+                          >
+                            <Trash2 size={15} />
+                            <span>Delete</span>
+                          </button>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 ))
@@ -202,6 +252,43 @@ export default function Residents() {
             </tbody>
           </table>
         </div>
+        {filteredUsers.length > 0 && (
+          <div className="residents-pagination-container">
+            <div className="residents-pagination-info">
+              Showing {startIndex + 1} to {Math.min(startIndex + ITEMS_PER_PAGE, filteredUsers.length)} of {filteredUsers.length} users
+            </div>
+            <div className="residents-pagination-controls">
+              <button
+                type="button"
+                className="residents-page-btn"
+                disabled={safeCurrentPage === 1}
+                onClick={() => setCurrentPage((page) => Math.max(1, page - 1))}
+                aria-label="Previous page"
+              >
+                <ChevronLeft size={16} />
+              </button>
+              {pageNumbers.map((page) => (
+                <button
+                  key={page}
+                  type="button"
+                  className={`residents-page-btn ${safeCurrentPage === page ? 'active' : ''}`}
+                  onClick={() => setCurrentPage(page)}
+                >
+                  {page}
+                </button>
+              ))}
+              <button
+                type="button"
+                className="residents-page-btn"
+                disabled={safeCurrentPage === totalPages}
+                onClick={() => setCurrentPage((page) => Math.min(totalPages, page + 1))}
+                aria-label="Next page"
+              >
+                <ChevronRight size={16} />
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
       {isModalOpen && (
@@ -336,6 +423,16 @@ export default function Residents() {
             </div>
 
             <div className="modal-actions" style={{ marginTop: '32px' }}>
+              {isSuperAdmin && selectedUser.role !== 'super_admin' && (
+                <button
+                  type="button"
+                  className="btn-secondary"
+                  onClick={() => handleDeleteUser(selectedUser)}
+                  style={{ width: '100%', color: '#dc2626', borderColor: '#fecaca' }}
+                >
+                  Delete Account
+                </button>
+              )}
               <button type="button" className="btn-secondary" onClick={() => setSelectedUser(null)} style={{ width: '100%' }}>
                 Close
               </button>
