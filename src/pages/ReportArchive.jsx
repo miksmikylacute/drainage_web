@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { useApp } from '../context/useApp';
 import {
@@ -6,6 +6,9 @@ import {
 } from 'lucide-react';
 import cloggedDrainImg from '../assets/clogged_drain.png';
 import { isReportVisibleOnMap } from '../lib/reportMapMarkers';
+import { isReportArchived } from '../lib/reportArchiveRules';
+import { formatReportCoordinates } from '../lib/reportCoordinates';
+import { isReportVideo } from '../lib/reportMedia';
 import '../css/reports.css';
 import '../css/archive.css';
 
@@ -53,6 +56,7 @@ export default function ReportArchive() {
   const [statusFilter, setStatusFilter] = useState('All Status');
   const [sortBy, setSortBy] = useState('Newest First');
   const [currentPage, setCurrentPage] = useState(1);
+  const [archiveNow, setArchiveNow] = useState(() => new Date());
 
   // Edit/View Modal State
   const [editingReport, setEditingReport] = useState(null);
@@ -71,6 +75,11 @@ export default function ReportArchive() {
     ? reportRemarks.filter((remark) => remark.reportId === currentEditingReport.id)
     : [];
   const isSuperAdmin = session?.user?.role === 'super_admin';
+
+  useEffect(() => {
+    const timer = window.setInterval(() => setArchiveNow(new Date()), 60 * 1000);
+    return () => window.clearInterval(timer);
+  }, []);
 
   // Derive available years
   const availableYears = useMemo(() => {
@@ -111,8 +120,8 @@ export default function ReportArchive() {
         if (monthFilter !== 'All Months' || yearFilter !== 'All Years') return false;
       }
 
-      // Only show Resolved and Rejected reports in the archive
-      if (report.status !== 'Resolved' && report.status !== 'Rejected') return false;
+      // Only show Resolved and Rejected reports after the 24-hour active window.
+      if (!isReportArchived(report, reportLogs, archiveNow)) return false;
 
       // Status
       if (statusFilter !== 'All Status' && report.status !== statusFilter) return false;
@@ -132,7 +141,7 @@ export default function ReportArchive() {
     });
 
     return result;
-  }, [reports, searchQuery, monthFilter, yearFilter, statusFilter, sortBy]);
+  }, [archiveNow, reportLogs, reports, searchQuery, monthFilter, yearFilter, statusFilter, sortBy]);
 
   const totalPages = Math.max(1, Math.ceil(filteredReports.length / ITEMS_PER_PAGE));
   const safeCurrentPage = Math.min(currentPage, totalPages);
@@ -350,12 +359,23 @@ export default function ReportArchive() {
                       <td className="archive-row-number">{displayIndex}</td>
                       <td>
                         <div className="archive-details-cell">
-                          <img
-                            src={report.imageUrl || cloggedDrainImg}
-                            alt="Report"
-                            className="archive-report-thumb"
-                            onClick={() => handleOpenEdit(report)}
-                          />
+                          {isReportVideo(report.imageUrl) ? (
+                            <button
+                              type="button"
+                              className="archive-report-thumb archive-video-thumb"
+                              onClick={() => handleOpenEdit(report)}
+                              aria-label="Open video report"
+                            >
+                              ▶
+                            </button>
+                          ) : (
+                            <img
+                              src={report.imageUrl || cloggedDrainImg}
+                              alt="Report"
+                              className="archive-report-thumb"
+                              onClick={() => handleOpenEdit(report)}
+                            />
+                          )}
                           <div className="archive-details-text">
                             <span className="archive-details-title" onClick={() => handleOpenEdit(report)}>
                               {report.issue}
@@ -470,6 +490,10 @@ export default function ReportArchive() {
                   )}
                 </div>
                 <div className="report-detail-row">
+                  <span className="report-detail-label">Coordinates</span>
+                  <span className="report-detail-value">{formatReportCoordinates(currentEditingReport)}</span>
+                </div>
+                <div className="report-detail-row">
                   <span className="report-detail-label">Date Submitted</span>
                   <span className="report-detail-value">{currentEditingReport.dateSubmitted}</span>
                 </div>
@@ -496,18 +520,25 @@ export default function ReportArchive() {
               </section>
 
               <section className="report-media-panel">
-                <div className="report-panel-title">Report Photo</div>
+                <div className="report-panel-title">Report Attachment</div>
                 <button
                   type="button"
                   className="report-image-container report-image-button"
                   onClick={() => setShowImagePopup(true)}
-                  title="View full image"
+                  title="View full attachment"
                 >
-                  <img 
-                    src={currentEditingReport.imageUrl || cloggedDrainImg} 
-                    alt="Clogged drainage documentation" 
-                    className="report-image" 
-                  />
+                  {isReportVideo(currentEditingReport.imageUrl) ? (
+                    <div className="report-video-preview">
+                      <span className="report-video-play">▶</span>
+                      <span>Video attachment</span>
+                    </div>
+                  ) : (
+                    <img
+                      src={currentEditingReport.imageUrl || cloggedDrainImg}
+                      alt="Clogged drainage documentation"
+                      className="report-image"
+                    />
+                  )}
                 </button>
               </section>
             </div>
@@ -647,11 +678,20 @@ export default function ReportArchive() {
                   </button>
                 </div>
                 <div className="image-popup-body">
-                  <img
-                    src={currentEditingReport.imageUrl || cloggedDrainImg}
-                    alt="Full report documentation"
-                    className="image-popup-img"
-                  />
+                  {isReportVideo(currentEditingReport.imageUrl) ? (
+                    <video
+                      src={currentEditingReport.imageUrl}
+                      className="image-popup-img"
+                      controls
+                      playsInline
+                    />
+                  ) : (
+                    <img
+                      src={currentEditingReport.imageUrl || cloggedDrainImg}
+                      alt="Full report documentation"
+                      className="image-popup-img"
+                    />
+                  )}
                 </div>
               </div>
             </div>

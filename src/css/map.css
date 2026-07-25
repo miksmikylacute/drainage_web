@@ -134,8 +134,16 @@
 .lf-popup-loc {
   font-size: 12px;
   color: #64748b;
-  margin-bottom: 10px;
+  margin-bottom: 4px;
   line-height: 1.4;
+}
+
+.lf-popup-coordinates {
+  font-size: 11px;
+  color: #0f172a;
+  font-weight: 700;
+  margin-bottom: 10px;
+  line-height: 1.35;
 }
 
 .lf-popup-meta {

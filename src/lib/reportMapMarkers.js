@@ -16,7 +16,6 @@ export const REPORT_STATUS_COLORS = {
 export const REPORT_STATUS_LEGEND = [
   { status: 'Pending', label: 'New Report', color: REPORT_STATUS_COLORS.Pending },
   { status: 'In Progress', label: 'In Progress', color: REPORT_STATUS_COLORS['In Progress'] },
-  { status: 'Rejected', label: 'Rejected', color: REPORT_STATUS_COLORS.Rejected },
 ];
 
 export function getReportStatusColor(status) {
@@ -28,7 +27,11 @@ export function hasReportCoordinates(report) {
 }
 
 export function isReportVisibleOnMap(report) {
-  return hasReportCoordinates(report) && report.status !== 'Resolved';
+  return (
+    hasReportCoordinates(report) &&
+    report.status !== 'Resolved' &&
+    report.status !== 'Rejected'
+  );
 }
 
 export function buildReportMarkerSvg(color, size = 'normal') {

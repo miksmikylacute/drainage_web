@@ -285,6 +285,108 @@
   transition: width 0.2s ease;
 }
 
+.status-line-card {
+  margin-bottom: 24px;
+}
+
+.status-line-subtitle {
+  font-size: 12px;
+  font-weight: 700;
+  color: #64748b;
+}
+
+.status-line-controls {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.status-line-select {
+  height: 36px;
+  min-width: 156px;
+  padding: 0 34px 0 12px;
+  border: 1px solid #dbe3ee;
+  border-radius: 10px;
+  background: #ffffff;
+  color: #1e293b;
+  font-size: 13px;
+  font-weight: 700;
+  outline: none;
+}
+
+.status-line-select:focus {
+  border-color: #93c5fd;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+}
+
+.status-line-chart-wrap {
+  width: 100%;
+  min-height: 330px;
+  border: 1px solid #e8ecf1;
+  border-radius: 14px;
+  background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+  overflow: hidden;
+}
+
+.status-line-chart {
+  display: block;
+  width: 100%;
+  height: 330px;
+}
+
+.status-line-grid {
+  stroke: #e2e8f0;
+  stroke-width: 1;
+}
+
+.status-line-axis-label {
+  fill: #64748b;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.status-line-day-label {
+  fill: #64748b;
+  font-size: 9px;
+  font-weight: 700;
+}
+
+.status-line-axis-title {
+  fill: #334155;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.status-line-path {
+  opacity: 0.74;
+  filter: drop-shadow(0 4px 8px rgba(15, 23, 42, 0.05));
+}
+
+.status-line-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 16px;
+  margin-top: 14px;
+}
+
+.status-line-legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  color: #475569;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.status-line-legend-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
 /* Map Preview */
 .map-preview {
   display: block;

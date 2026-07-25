@@ -217,6 +217,15 @@
   transform: scale(1.05);
 }
 
+.archive-video-thumb {
+  background: #eaf2ff;
+  color: #2563eb;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 22px;
+}
+
 .archive-details-text {
   display: flex;
   flex-direction: column;

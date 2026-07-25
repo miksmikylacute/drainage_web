@@ -1,13 +1,23 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { useApp } from '../context/useApp';
 import { Search, X, Edit, ChevronLeft, ChevronRight, Trash2 } from 'lucide-react';
 import cloggedDrainImg from '../assets/clogged_drain.png';
 import { isReportVisibleOnMap } from '../lib/reportMapMarkers';
+import { isReportActiveForReportsPage } from '../lib/reportArchiveRules';
+import { formatReportCoordinates } from '../lib/reportCoordinates';
+import { isReportVideo } from '../lib/reportMedia';
 import '../css/reports.css';
 
 const REPORT_TABS = ['All', 'Pending', 'In Progress', 'Resolved', 'Rejected'];
 const ITEMS_PER_PAGE = 10;
+const SEVERITY_WEIGHT = {
+  'Critical': 4,
+  'High': 3,
+  'Medium': 2,
+  'Low': 1,
+  '': 0
+};
 
 export default function Reports() {
   const {
@@ -30,19 +40,7 @@ export default function Reports() {
   const [searchQuery, setSearchQuery] = useState(initialSearch);
   const [activeTab, setActiveTab] = useState(initialTab);
   const [currentPage, setCurrentPage] = useState(1);
-
-  const getPriority = (reportId) => {
-    const report = reports.find((item) => item.id === reportId);
-    return report?.priority || '';
-  };
-
-  const severityWeight = {
-    'Critical': 4,
-    'High': 3,
-    'Medium': 2,
-    'Low': 1,
-    '': 0
-  };
+  const [archiveNow, setArchiveNow] = useState(() => new Date());
 
   // Edit Modal State
   const [editingReport, setEditingReport] = useState(null);
@@ -67,7 +65,7 @@ export default function Reports() {
     setEditingReport(report);
     setRemarks(report.remarks || '');
     setStatusVal(report.status);
-    setPriorityVal(getPriority(report.id));
+    setPriorityVal(report.priority || '');
     setShowRemarksPopup(false);
     setShowImagePopup(false);
   };
@@ -121,46 +119,43 @@ export default function Reports() {
     }
   };
 
-  // Filter reports by tab and search query
-  const filteredReports = reports.filter((report) => {
-    const isFocusedReport = focusReportId
-      ? report.id === focusReportId || report.displayId === focusReportId
-      : false;
+  useEffect(() => {
+    const timer = window.setInterval(() => setArchiveNow(new Date()), 60 * 1000);
+    return () => window.clearInterval(timer);
+  }, []);
 
-    // Remove reports that have been resolved or rejected after 24 hours
-    if (report.status === 'Resolved' || report.status === 'Rejected') {
-      const lastUpdated = report.updatedAt ? new Date(report.updatedAt) : new Date(report.createdAt || report.dateSubmitted);
-      const now = new Date();
-      const diffMs = now.getTime() - lastUpdated.getTime();
-      const diffHours = diffMs / (1000 * 60 * 60);
-      if (diffHours > 24 && !isFocusedReport) {
-        return false;
+  // Filter reports by archive eligibility, tab, and search query.
+  const filteredReports = useMemo(() => {
+    const q = searchQuery.toLowerCase();
+    const result = reports.filter((report) => {
+      if (!isReportActiveForReportsPage(report, reportLogs, archiveNow)) return false;
+
+      const matchesTab = activeTab === 'All' || report.status === activeTab;
+      const matchesSearch =
+        !q ||
+        report.issue.toLowerCase().includes(q) ||
+        report.location.toLowerCase().includes(q) ||
+        report.submittedBy.toLowerCase().includes(q) ||
+        report.displayId.toLowerCase().includes(q) ||
+        report.id.toLowerCase().includes(q);
+
+      return matchesTab && matchesSearch;
+    });
+
+    // Sort by priority severity weight, then by creation date descending.
+    result.sort((a, b) => {
+      const severityA = SEVERITY_WEIGHT[a.priority || ''] ?? 0;
+      const severityB = SEVERITY_WEIGHT[b.priority || ''] ?? 0;
+      if (severityB !== severityA) {
+        return severityB - severityA;
       }
-    }
+      const dateA = new Date(a.createdAt || a.dateSubmitted).getTime();
+      const dateB = new Date(b.createdAt || b.dateSubmitted).getTime();
+      return dateB - dateA;
+    });
 
-    const matchesTab = activeTab === 'All' || report.status === activeTab;
-    const matchesSearch = 
-      !searchQuery ||
-      report.issue.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      report.location.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      report.submittedBy.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      report.displayId.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      report.id.toLowerCase().includes(searchQuery.toLowerCase());
-    
-    return matchesTab && matchesSearch;
-  });
-
-  // Sort by priority severity weight, then by creation date descending
-  filteredReports.sort((a, b) => {
-    const severityA = severityWeight[getPriority(a.id)] ?? 0;
-    const severityB = severityWeight[getPriority(b.id)] ?? 0;
-    if (severityB !== severityA) {
-      return severityB - severityA;
-    }
-    const dateA = new Date(a.createdAt || a.dateSubmitted).getTime();
-    const dateB = new Date(b.createdAt || b.dateSubmitted).getTime();
-    return dateB - dateA;
-  });
+    return result;
+  }, [activeTab, archiveNow, reportLogs, reports, searchQuery]);
 
   const focusedReportIndex = focusReportId
     ? filteredReports.findIndex((report) => report.id === focusReportId || report.displayId === focusReportId)
@@ -283,9 +278,9 @@ export default function Reports() {
                     <td>{report.location}</td>
                     <td>{report.submittedBy || 'Anonymous'}</td>
                     <td>
-                      {getPriority(report.id) ? (
-                        <span className={`priority-badge priority-${getPriority(report.id).toLowerCase()}`}>
-                          {getPriority(report.id)}
+                      {report.priority ? (
+                        <span className={`priority-badge priority-${report.priority.toLowerCase()}`}>
+                          {report.priority}
                         </span>
                       ) : (
                         ''
@@ -391,6 +386,10 @@ export default function Reports() {
                   )}
                 </div>
                 <div className="report-detail-row">
+                  <span className="report-detail-label">Coordinates</span>
+                  <span className="report-detail-value">{formatReportCoordinates(currentEditingReport)}</span>
+                </div>
+                <div className="report-detail-row">
                   <span className="report-detail-label">Date Submitted</span>
                   <span className="report-detail-value">{currentEditingReport.dateSubmitted}</span>
                 </div>
@@ -417,18 +416,25 @@ export default function Reports() {
               </section>
 
               <section className="report-media-panel">
-                <div className="report-panel-title">Report Photo</div>
+                <div className="report-panel-title">Report Attachment</div>
                 <button
                   type="button"
                   className="report-image-container report-image-button"
                   onClick={() => setShowImagePopup(true)}
-                  title="View full image"
+                  title="View full attachment"
                 >
-                  <img 
-                    src={currentEditingReport.imageUrl || cloggedDrainImg} 
-                    alt="Clogged drainage documentation" 
-                    className="report-image" 
-                  />
+                  {isReportVideo(currentEditingReport.imageUrl) ? (
+                    <div className="report-video-preview">
+                      <span className="report-video-play">▶</span>
+                      <span>Video attachment</span>
+                    </div>
+                  ) : (
+                    <img
+                      src={currentEditingReport.imageUrl || cloggedDrainImg}
+                      alt="Clogged drainage documentation"
+                      className="report-image"
+                    />
+                  )}
                 </button>
               </section>
 
@@ -610,11 +616,20 @@ export default function Reports() {
                   </button>
                 </div>
                 <div className="image-popup-body">
-                  <img
-                    src={currentEditingReport.imageUrl || cloggedDrainImg}
-                    alt="Full report documentation"
-                    className="image-popup-img"
-                  />
+                  {isReportVideo(currentEditingReport.imageUrl) ? (
+                    <video
+                      src={currentEditingReport.imageUrl}
+                      className="image-popup-img"
+                      controls
+                      playsInline
+                    />
+                  ) : (
+                    <img
+                      src={currentEditingReport.imageUrl || cloggedDrainImg}
+                      alt="Full report documentation"
+                      className="image-popup-img"
+                    />
+                  )}
                 </div>
               </div>
             </div>

@@ -10,6 +10,7 @@ import {
   MAUBAN_CENTER,
   REPORT_STATUS_LEGEND,
 } from '../lib/reportMapMarkers';
+import { formatReportCoordinates } from '../lib/reportCoordinates';
 import '../css/map.css';
 
 export default function MapView() {
@@ -105,6 +106,7 @@ export default function MapView() {
           <div class="lf-popup">
             <div class="lf-popup-title">${report.issue ?? 'Drainage Issue'}</div>
             <div class="lf-popup-loc">${report.location ?? ''}</div>
+            <div class="lf-popup-coordinates">${formatReportCoordinates(report)}</div>
             <div class="lf-popup-meta">
               <span class="lf-popup-date">${report.dateSubmitted ?? ''}</span>
               <span class="lf-status lf-status-${report.statusClass ?? ''}">${report.status ?? ''}</span>
@@ -152,7 +154,7 @@ export default function MapView() {
   return (
     <div className="map-page-wrapper">
       <div className="map-header">
-        <p className="map-page-sub">Showing active and rejected drainage reports in Mauban, Quezon</p>
+        <p className="map-page-sub">Showing pending and in-progress drainage reports in Mauban, Quezon</p>
         <div className="map-legend" aria-label="Report status legend">
           {REPORT_STATUS_LEGEND.map((item) => (
             <span key={item.status} className="map-legend-item">

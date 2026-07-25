@@ -233,6 +233,31 @@
   transition: transform 0.18s ease;
 }
 
+.report-video-preview {
+  width: 100%;
+  height: 250px;
+  background: #eaf2ff;
+  color: #0f172a;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  font-weight: 700;
+}
+
+.report-video-play {
+  width: 54px;
+  height: 54px;
+  border-radius: 50%;
+  background: #2563eb;
+  color: #ffffff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 22px;
+}
+
 .report-detail-panel,
 .report-media-panel,
 .report-action-form,
