@@ -18,7 +18,7 @@ export default function Residents() {
   
   const [searchQuery, setSearchQuery] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [currentPage, setCurrentPage] = useState(1);
+  const [visibleCount, setVisibleCount] = useState(10);
   
   // Form State
   const [role, setRole] = useState('resident');
@@ -107,16 +107,7 @@ export default function Residents() {
     user.contact.includes(searchQuery) ||
     user.role.toLowerCase().includes(searchQuery.toLowerCase())
   );
-  const totalPages = Math.max(1, Math.ceil(filteredUsers.length / ITEMS_PER_PAGE));
-  const safeCurrentPage = Math.min(currentPage, totalPages);
-  const startIndex = (safeCurrentPage - 1) * ITEMS_PER_PAGE;
-  const displayedUsers = filteredUsers.slice(startIndex, startIndex + ITEMS_PER_PAGE);
-  const firstPageButton = Math.max(1, Math.min(safeCurrentPage - 2, totalPages - 4));
-  const lastPageButton = Math.min(totalPages, firstPageButton + 4);
-  const pageNumbers = Array.from(
-    { length: lastPageButton - firstPageButton + 1 },
-    (_, index) => firstPageButton + index
-  );
+  const displayedUsers = filteredUsers.slice(0, visibleCount);
 
   return (
     <div>
@@ -131,13 +122,13 @@ export default function Residents() {
               value={searchQuery}
               onChange={(e) => {
                 setSearchQuery(e.target.value);
-                setCurrentPage(1);
+                setVisibleCount(10);
               }}
             />
             {searchQuery && (
               <span className="clear-search-icon" onClick={() => {
                 setSearchQuery('');
-                setCurrentPage(1);
+                setVisibleCount(10);
               }}>
                 <X size={16} />
               </span>
@@ -255,38 +246,32 @@ export default function Residents() {
         {filteredUsers.length > 0 && (
           <div className="residents-pagination-container">
             <div className="residents-pagination-info">
-              Showing {startIndex + 1} to {Math.min(startIndex + ITEMS_PER_PAGE, filteredUsers.length)} of {filteredUsers.length} users
+              Showing 1 to {Math.min(visibleCount, filteredUsers.length)} of {filteredUsers.length} users
             </div>
-            <div className="residents-pagination-controls">
-              <button
-                type="button"
-                className="residents-page-btn"
-                disabled={safeCurrentPage === 1}
-                onClick={() => setCurrentPage((page) => Math.max(1, page - 1))}
-                aria-label="Previous page"
-              >
-                <ChevronLeft size={16} />
-              </button>
-              {pageNumbers.map((page) => (
-                <button
-                  key={page}
-                  type="button"
-                  className={`residents-page-btn ${safeCurrentPage === page ? 'active' : ''}`}
-                  onClick={() => setCurrentPage(page)}
-                >
-                  {page}
-                </button>
-              ))}
-              <button
-                type="button"
-                className="residents-page-btn"
-                disabled={safeCurrentPage === totalPages}
-                onClick={() => setCurrentPage((page) => Math.min(totalPages, page + 1))}
-                aria-label="Next page"
-              >
-                <ChevronRight size={16} />
-              </button>
-            </div>
+            {filteredUsers.length > 10 && (
+              <div className="residents-pagination-controls" style={{ display: 'flex', gap: '8px' }}>
+                {visibleCount < filteredUsers.length && (
+                  <button
+                    type="button"
+                    className="residents-page-btn"
+                    style={{ width: 'auto', padding: '0 16px' }}
+                    onClick={() => setVisibleCount((prev) => prev + 10)}
+                  >
+                    Show More
+                  </button>
+                )}
+                {visibleCount > 10 && (
+                  <button
+                    type="button"
+                    className="residents-page-btn"
+                    style={{ width: 'auto', padding: '0 16px' }}
+                    onClick={() => setVisibleCount(10)}
+                  >
+                    Show Less
+                  </button>
+                )}
+              </div>
+            )}
           </div>
         )}
       </div>

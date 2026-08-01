@@ -39,7 +39,7 @@ export default function Reports() {
   const initialTab = REPORT_TABS.includes(requestedStatus) ? requestedStatus : 'All';
   const [searchQuery, setSearchQuery] = useState(initialSearch);
   const [activeTab, setActiveTab] = useState(initialTab);
-  const [currentPage, setCurrentPage] = useState(1);
+  const [visibleCount, setVisibleCount] = useState(10);
   const [archiveNow, setArchiveNow] = useState(() => new Date());
 
   // Edit Modal State
@@ -160,30 +160,17 @@ export default function Reports() {
   const focusedReportIndex = focusReportId
     ? filteredReports.findIndex((report) => report.id === focusReportId || report.displayId === focusReportId)
     : -1;
-  const totalPages = Math.max(1, Math.ceil(filteredReports.length / ITEMS_PER_PAGE));
-  const focusedReportPage = focusedReportIndex >= 0
-    ? Math.floor(focusedReportIndex / ITEMS_PER_PAGE) + 1
-    : null;
-  const safeCurrentPage = Math.min(focusedReportPage || currentPage, totalPages);
-  const startIndex = (safeCurrentPage - 1) * ITEMS_PER_PAGE;
-  const displayedReports = filteredReports.slice(startIndex, startIndex + ITEMS_PER_PAGE);
-  const firstPageButton = Math.max(1, Math.min(safeCurrentPage - 2, totalPages - 4));
-  const lastPageButton = Math.min(totalPages, firstPageButton + 4);
-  const pageNumbers = Array.from(
-    { length: lastPageButton - firstPageButton + 1 },
-    (_, index) => firstPageButton + index
-  );
 
-  const updatePage = (page) => {
-    const params = new URLSearchParams(searchParams);
-    params.delete('focus');
-    params.delete('status');
-    navigate({
-      pathname: '/reports',
-      search: params.toString(),
-    }, { replace: true });
-    setCurrentPage(page);
-  };
+  useEffect(() => {
+    if (focusedReportIndex >= 0) {
+      const requiredItems = Math.ceil((focusedReportIndex + 1) / 10) * 10;
+      if (requiredItems > visibleCount) {
+        setVisibleCount(requiredItems);
+      }
+    }
+  }, [focusedReportIndex, filteredReports]);
+
+  const displayedReports = filteredReports.slice(0, visibleCount);
 
   useEffect(() => {
     if (!focusReportId) return;
@@ -214,7 +201,7 @@ export default function Reports() {
               className={`filter-tab ${activeTab === tab ? 'active' : ''}`}
               onClick={() => {
                 setActiveTab(tab);
-                setCurrentPage(1);
+                setVisibleCount(10);
               }}
             >
               {tab}
@@ -232,13 +219,13 @@ export default function Reports() {
             value={searchQuery}
             onChange={(e) => {
               setSearchQuery(e.target.value);
-              setCurrentPage(1);
+              setVisibleCount(10);
             }}
           />
           {searchQuery && (
             <span className="clear-search-icon" onClick={() => {
               setSearchQuery('');
-              setCurrentPage(1);
+              setVisibleCount(10);
             }}>
               <X size={16} />
             </span>
@@ -318,38 +305,32 @@ export default function Reports() {
         {filteredReports.length > 0 && (
           <div className="reports-pagination-container">
             <div className="reports-pagination-info">
-              Showing {startIndex + 1} to {Math.min(startIndex + ITEMS_PER_PAGE, filteredReports.length)} of {filteredReports.length} reports
+              Showing 1 to {Math.min(visibleCount, filteredReports.length)} of {filteredReports.length} reports
             </div>
-            <div className="reports-pagination-controls">
-              <button
-                type="button"
-                className="reports-page-btn"
-                disabled={safeCurrentPage === 1}
-                onClick={() => updatePage(Math.max(1, safeCurrentPage - 1))}
-                aria-label="Previous page"
-              >
-                <ChevronLeft size={16} />
-              </button>
-              {pageNumbers.map((page) => (
-                <button
-                  key={page}
-                  type="button"
-                  className={`reports-page-btn ${safeCurrentPage === page ? 'active' : ''}`}
-                  onClick={() => updatePage(page)}
-                >
-                  {page}
-                </button>
-              ))}
-              <button
-                type="button"
-                className="reports-page-btn"
-                disabled={safeCurrentPage === totalPages}
-                onClick={() => updatePage(Math.min(totalPages, safeCurrentPage + 1))}
-                aria-label="Next page"
-              >
-                <ChevronRight size={16} />
-              </button>
-            </div>
+            {filteredReports.length > 10 && (
+              <div className="reports-pagination-controls" style={{ display: 'flex', gap: '8px' }}>
+                {visibleCount < filteredReports.length && (
+                  <button
+                    type="button"
+                    className="reports-page-btn"
+                    style={{ width: 'auto', padding: '0 16px' }}
+                    onClick={() => setVisibleCount((prev) => prev + 10)}
+                  >
+                    Show More
+                  </button>
+                )}
+                {visibleCount > 10 && (
+                  <button
+                    type="button"
+                    className="reports-page-btn"
+                    style={{ width: 'auto', padding: '0 16px' }}
+                    onClick={() => setVisibleCount(10)}
+                  >
+                    Show Less
+                  </button>
+                )}
+              </div>
+            )}
           </div>
         )}
       </div>

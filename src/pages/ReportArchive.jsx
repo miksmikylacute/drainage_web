@@ -55,7 +55,7 @@ export default function ReportArchive() {
   const [yearFilter, setYearFilter] = useState('All Years');
   const [statusFilter, setStatusFilter] = useState('All Status');
   const [sortBy, setSortBy] = useState('Newest First');
-  const [currentPage, setCurrentPage] = useState(1);
+  const [visibleCount, setVisibleCount] = useState(10);
   const [archiveNow, setArchiveNow] = useState(() => new Date());
 
   // Edit/View Modal State
@@ -143,18 +143,9 @@ export default function ReportArchive() {
     return result;
   }, [archiveNow, reportLogs, reports, searchQuery, monthFilter, yearFilter, statusFilter, sortBy]);
 
-  const totalPages = Math.max(1, Math.ceil(filteredReports.length / ITEMS_PER_PAGE));
-  const safeCurrentPage = Math.min(currentPage, totalPages);
-  const startIndex = (safeCurrentPage - 1) * ITEMS_PER_PAGE;
-  const displayedReports = filteredReports.slice(startIndex, startIndex + ITEMS_PER_PAGE);
-  const firstPageButton = Math.max(1, Math.min(safeCurrentPage - 2, totalPages - 4));
-  const lastPageButton = Math.min(totalPages, firstPageButton + 4);
-  const pageNumbers = Array.from(
-    { length: lastPageButton - firstPageButton + 1 },
-    (_, index) => firstPageButton + index
-  );
+  const displayedReports = filteredReports.slice(0, visibleCount);
 
-  const resetToFirstPage = () => setCurrentPage(1);
+  const resetVisibleCount = () => setVisibleCount(10);
 
   const handleClearFilters = () => {
     setSearchQuery('');
@@ -162,7 +153,7 @@ export default function ReportArchive() {
     setYearFilter('All Years');
     setStatusFilter('All Status');
     setSortBy('Newest First');
-    resetToFirstPage();
+    resetVisibleCount();
   };
 
   const handleOpenEdit = (report) => {
@@ -230,10 +221,10 @@ export default function ReportArchive() {
             placeholder="Search report title or location..."
             className="archive-search-input"
             value={searchQuery}
-            onChange={(e) => { setSearchQuery(e.target.value); resetToFirstPage(); }}
+            onChange={(e) => { setSearchQuery(e.target.value); resetVisibleCount(); }}
           />
           {searchQuery && (
-            <span className="archive-clear-search" onClick={() => { setSearchQuery(''); resetToFirstPage(); }}>
+            <span className="archive-clear-search" onClick={() => { setSearchQuery(''); resetVisibleCount(); }}>
               <X size={16} />
             </span>
           )}
@@ -247,7 +238,7 @@ export default function ReportArchive() {
               <Calendar className="archive-select-icon" size={16} />
               <select
                 value={monthFilter}
-                onChange={(e) => { setMonthFilter(e.target.value); resetToFirstPage(); }}
+                onChange={(e) => { setMonthFilter(e.target.value); resetVisibleCount(); }}
                 className="archive-select"
               >
                 <option value="All Months">All Months</option>
@@ -266,7 +257,7 @@ export default function ReportArchive() {
               <Calendar className="archive-select-icon" size={16} />
               <select
                 value={yearFilter}
-                onChange={(e) => { setYearFilter(e.target.value); resetToFirstPage(); }}
+                onChange={(e) => { setYearFilter(e.target.value); resetVisibleCount(); }}
                 className="archive-select"
               >
                 <option value="All Years">All Years</option>
@@ -284,7 +275,7 @@ export default function ReportArchive() {
             <div className="archive-select-container">
               <select
                 value={statusFilter}
-                onChange={(e) => { setStatusFilter(e.target.value); resetToFirstPage(); }}
+                onChange={(e) => { setStatusFilter(e.target.value); resetVisibleCount(); }}
                 className="archive-select no-icon"
               >
                 <option value="All Status">All Status</option>
@@ -301,7 +292,7 @@ export default function ReportArchive() {
             <div className="archive-select-container">
               <select
                 value={sortBy}
-                onChange={(e) => { setSortBy(e.target.value); resetToFirstPage(); }}
+                onChange={(e) => { setSortBy(e.target.value); resetVisibleCount(); }}
                 className="archive-select no-icon"
               >
                 <option value="Newest First">Newest First</option>
@@ -353,7 +344,7 @@ export default function ReportArchive() {
             <tbody>
               {displayedReports.length > 0 ? (
                 displayedReports.map((report, index) => {
-                  const displayIndex = startIndex + index + 1;
+                  const displayIndex = index + 1;
                   return (
                     <tr key={report.id}>
                       <td className="archive-row-number">{displayIndex}</td>
@@ -423,38 +414,32 @@ export default function ReportArchive() {
         {filteredReports.length > 0 && (
           <div className="archive-pagination-container">
             <div className="archive-pagination-info">
-              Showing {startIndex + 1} to {Math.min(startIndex + ITEMS_PER_PAGE, filteredReports.length)} of {filteredReports.length} reports
+              Showing 1 to {Math.min(visibleCount, filteredReports.length)} of {filteredReports.length} reports
             </div>
-            <div className="archive-pagination-controls">
-              <button
-                type="button"
-                className="archive-page-btn"
-                disabled={safeCurrentPage === 1}
-                onClick={() => setCurrentPage((page) => Math.max(1, page - 1))}
-                aria-label="Previous page"
-              >
-                <ChevronLeft size={16} />
-              </button>
-              {pageNumbers.map((page) => (
-                <button
-                  key={page}
-                  type="button"
-                  className={`archive-page-btn ${safeCurrentPage === page ? 'active' : ''}`}
-                  onClick={() => setCurrentPage(page)}
-                >
-                  {page}
-                </button>
-              ))}
-              <button
-                type="button"
-                className="archive-page-btn"
-                disabled={safeCurrentPage === totalPages}
-                onClick={() => setCurrentPage((page) => Math.min(totalPages, page + 1))}
-                aria-label="Next page"
-              >
-                <ChevronRight size={16} />
-              </button>
-            </div>
+            {filteredReports.length > 10 && (
+              <div className="archive-pagination-controls" style={{ display: 'flex', gap: '8px' }}>
+                {visibleCount < filteredReports.length && (
+                  <button
+                    type="button"
+                    className="archive-page-btn"
+                    style={{ width: 'auto', padding: '0 16px' }}
+                    onClick={() => setVisibleCount((prev) => prev + 10)}
+                  >
+                    Show More
+                  </button>
+                )}
+                {visibleCount > 10 && (
+                  <button
+                    type="button"
+                    className="archive-page-btn"
+                    style={{ width: 'auto', padding: '0 16px' }}
+                    onClick={() => setVisibleCount(10)}
+                  >
+                    Show Less
+                  </button>
+                )}
+              </div>
+            )}
           </div>
         )}
       </div>

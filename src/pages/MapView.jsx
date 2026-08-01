@@ -154,7 +154,7 @@ export default function MapView() {
   return (
     <div className="map-page-wrapper">
       <div className="map-header">
-        <p className="map-page-sub">Showing pending and in-progress drainage reports in Mauban, Quezon</p>
+        <p className="map-page-sub">Showing drainage reports in Mauban, Quezon</p>
         <div className="map-legend" aria-label="Report status legend">
           {REPORT_STATUS_LEGEND.map((item) => (
             <span key={item.status} className="map-legend-item">

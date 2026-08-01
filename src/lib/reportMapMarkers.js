@@ -7,15 +7,17 @@ export const MAUBAN_BOUNDS = [
 ];
 
 export const REPORT_STATUS_COLORS = {
-  Pending: '#ef4444',
-  'In Progress': '#2563eb',
-  Resolved: '#10b981',
-  Rejected: '#8b5cf6',
+  Pending: '#FFC107',
+  'In Progress': '#3B82F6',
+  Resolved: '#22C55E',
+  Rejected: '#EF4444',
 };
 
 export const REPORT_STATUS_LEGEND = [
-  { status: 'Pending', label: 'New Report', color: REPORT_STATUS_COLORS.Pending },
+  { status: 'Pending', label: 'Pending', color: REPORT_STATUS_COLORS.Pending },
   { status: 'In Progress', label: 'In Progress', color: REPORT_STATUS_COLORS['In Progress'] },
+  { status: 'Resolved', label: 'Resolved', color: REPORT_STATUS_COLORS.Resolved },
+  { status: 'Rejected', label: 'Rejected', color: REPORT_STATUS_COLORS.Rejected },
 ];
 
 export function getReportStatusColor(status) {
@@ -27,11 +29,7 @@ export function hasReportCoordinates(report) {
 }
 
 export function isReportVisibleOnMap(report) {
-  return (
-    hasReportCoordinates(report) &&
-    report.status !== 'Resolved' &&
-    report.status !== 'Rejected'
-  );
+  return hasReportCoordinates(report);
 }
 
 export function buildReportMarkerSvg(color, size = 'normal') {
