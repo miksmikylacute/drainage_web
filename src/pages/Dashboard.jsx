@@ -288,10 +288,10 @@ function DashboardMiniMap({ reports }) {
       const map = L.map(mapRef.current, {
         center: MAUBAN_CENTER,
         zoom: DEFAULT_MAP_ZOOM,
-        minZoom: 11,
-        maxZoom: 18,
+        minZoom: 16,
+        maxZoom: 19,
         maxBounds: MAUBAN_BOUNDS,
-        maxBoundsViscosity: 0.9,
+        maxBoundsViscosity: 1.0,
         zoomControl: false,
         attributionControl: false,
       });
@@ -301,7 +301,7 @@ function DashboardMiniMap({ reports }) {
       setTimeout(() => map.invalidateSize(), 0);
 
       L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        maxZoom: 18,
+        maxZoom: 19,
       }).addTo(map);
     }
 
@@ -420,25 +420,25 @@ export default function Dashboard() {
         <div className="stat-card-wrapper">
           <div className="card stat-card pending">
             <span className="stat-title">Pending</span>
-            <span className="stat-value" style={{ color: '#ef4444' }}>{pendingCount}</span>
+            <span className="stat-value">{pendingCount}</span>
           </div>
         </div>
         <div className="stat-card-wrapper">
           <div className="card stat-card inprogress">
             <span className="stat-title">In Progress</span>
-            <span className="stat-value" style={{ color: '#2563eb' }}>{inProgressCount}</span>
+            <span className="stat-value">{inProgressCount}</span>
           </div>
         </div>
         <div className="stat-card-wrapper">
           <div className="card stat-card resolved">
             <span className="stat-title">Resolved</span>
-            <span className="stat-value" style={{ color: '#10b981' }}>{resolvedCount}</span>
+            <span className="stat-value">{resolvedCount}</span>
           </div>
         </div>
         <div className="stat-card-wrapper">
           <div className="card stat-card rejected">
             <span className="stat-title">Rejected</span>
-            <span className="stat-value" style={{ color: '#8b5cf6' }}>{rejectedCount}</span>
+            <span className="stat-value">{rejectedCount}</span>
           </div>
         </div>
       </div>

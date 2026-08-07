@@ -37,10 +37,10 @@ export default function MapView() {
       const map = L.map(mapRef.current, {
         center: MAUBAN_CENTER,
         zoom: DEFAULT_MAP_ZOOM,
-        minZoom: 11,
-        maxZoom: 18,
+        minZoom: 16,
+        maxZoom: 19,
         maxBounds: MAUBAN_BOUNDS,
-        maxBoundsViscosity: 0.9,
+        maxBoundsViscosity: 1.0,
       });
 
       leafletMapRef.current = map;
@@ -51,16 +51,10 @@ export default function MapView() {
       L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         attribution:
           '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-        maxZoom: 18,
+        maxZoom: 19,
       }).addTo(map);
 
-      // Municipality label overlay
-      const maubanLabel = L.divIcon({
-        html: `<div class="map-municipality-label">Mauban, Quezon</div>`,
-        className: '',
-        iconAnchor: [60, 12],
-      });
-      L.marker(MAUBAN_CENTER, { icon: maubanLabel, interactive: false }).addTo(map);
+
     }
 
     init();
@@ -102,23 +96,27 @@ export default function MapView() {
 
         const marker = L.marker([report.latitude, report.longitude], { icon }).addTo(map);
 
-        const popupHtml = `
-          <div class="lf-popup">
-            <div class="lf-popup-title">${report.issue ?? 'Drainage Issue'}</div>
-            <div class="lf-popup-loc">${report.location ?? ''}</div>
-            <div class="lf-popup-coordinates">${formatReportCoordinates(report)}</div>
-            <div class="lf-popup-meta">
-              <span class="lf-popup-date">${report.dateSubmitted ?? ''}</span>
-              <span class="lf-status lf-status-${report.statusClass ?? ''}">${report.status ?? ''}</span>
-            </div>
-            <button class="lf-popup-btn" data-report-id="${report.id}" data-report-status="${report.status ?? ''}">View details</button>
-          </div>`;
+        const popupContent = document.createElement('div');
+        popupContent.className = 'map-popup-card';
+        popupContent.innerHTML = `
+          <div class="map-popup-badge" style="background-color: ${color}">
+            ${report.status}
+          </div>
+          <h4 class="map-popup-title">${report.issue}</h4>
+          <p class="map-popup-location">${report.location}</p>
+          <p class="map-popup-coords">
+            <strong>Coords:</strong> ${formatReportCoordinates(report.latitude, report.longitude)}
+          </p>
+          <p class="map-popup-reporter">By: ${report.submittedBy}</p>
+          <button class="map-popup-action-btn" data-report-id="${report.id}" data-report-status="${report.status}">
+            View details
+          </button>
+        `;
 
-        marker.bindPopup(popupHtml, { maxWidth: 240, className: 'lf-popup-wrapper' });
+        marker.bindPopup(popupContent);
 
-        // Handle "View details" click via event delegation on the map container
         marker.on('popupopen', () => {
-          const btn = mapRef.current?.querySelector('.lf-popup-btn');
+          const btn = popupContent.querySelector('.map-popup-action-btn');
           if (btn) {
             const params = new URLSearchParams({
               focus: btn.dataset.reportId,
@@ -154,7 +152,7 @@ export default function MapView() {
   return (
     <div className="map-page-wrapper">
       <div className="map-header">
-        <p className="map-page-sub">Showing pending and in-progress drainage reports in Mauban, Quezon</p>
+        <p className="map-page-sub">Showing pending and in-progress drainage reports in Brgy. Soledad, Mauban, Quezon</p>
         <div className="map-legend" aria-label="Report status legend">
           {REPORT_STATUS_LEGEND.map((item) => (
             <span key={item.status} className="map-legend-item">

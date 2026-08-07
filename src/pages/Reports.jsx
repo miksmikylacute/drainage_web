@@ -11,13 +11,7 @@ import '../css/reports.css';
 
 const REPORT_TABS = ['All', 'Pending', 'In Progress', 'Resolved', 'Rejected'];
 const ITEMS_PER_PAGE = 10;
-const SEVERITY_WEIGHT = {
-  'Critical': 4,
-  'High': 3,
-  'Medium': 2,
-  'Low': 1,
-  '': 0
-};
+
 
 export default function Reports() {
   const {
@@ -142,13 +136,8 @@ export default function Reports() {
       return matchesTab && matchesSearch;
     });
 
-    // Sort by priority severity weight, then by creation date descending.
+    // Sort by submission date descending (newest first).
     result.sort((a, b) => {
-      const severityA = SEVERITY_WEIGHT[a.priority || ''] ?? 0;
-      const severityB = SEVERITY_WEIGHT[b.priority || ''] ?? 0;
-      if (severityB !== severityA) {
-        return severityB - severityA;
-      }
       const dateA = new Date(a.createdAt || a.dateSubmitted).getTime();
       const dateB = new Date(b.createdAt || b.dateSubmitted).getTime();
       return dateB - dateA;
