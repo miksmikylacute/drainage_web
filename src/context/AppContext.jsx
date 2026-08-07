@@ -43,6 +43,7 @@ function mapReport(report) {
     location: report.location_label || 'Pinned location',
     status: report.status || 'Pending',
     statusClass: statusClass(report.status),
+    priority: report.priority || '',
     dateSubmitted: formatDate(report.created_at),
     submittedBy: resident.fullname || 'Unknown resident',
     contactNo: resident.phone || '',
@@ -161,6 +162,7 @@ export function AppProvider({ children }) {
           longitude,
           location_label,
           status,
+          priority,
           created_at,
           updated_at,
           users:user_id (
@@ -262,6 +264,7 @@ export function AppProvider({ children }) {
             longitude,
             location_label,
             status,
+            priority,
             created_at,
             updated_at,
             users:user_id (
@@ -474,7 +477,7 @@ export function AppProvider({ children }) {
     if (resetError) throw resetError;
   };
 
-  const updateCurrentProfile = async ({ fullname, phone, email, avatarFile }) => {
+  const updateCurrentProfile = async ({ fullname, phone, avatarFile }) => {
     if (!session?.user) throw new Error('No authenticated user.');
 
     let avatarUrl = session.user.avatarUrl || '';
@@ -494,15 +497,10 @@ export function AppProvider({ children }) {
       avatarUrl = data.publicUrl;
     }
 
-    if (email.trim() !== session.user.email) {
-      const { error: authError } = await supabase.auth.updateUser({ email: email.trim() });
-      if (authError) throw authError;
-    }
-
     const { data: profile, error: profileError } = await supabase
       .from('users')
       .update({
-        email: email.trim(),
+        email: session.user.email,
         fullname: fullname.trim(),
         phone: phone.trim(),
         avatar_url: avatarUrl
@@ -531,12 +529,24 @@ export function AppProvider({ children }) {
     await loadUsers();
   };
 
-  const updateReportDetails = async (id, newStatus, newRemarks) => {
-    const { data, error: updateError } = await supabase.rpc('update_report_status', {
-      p_report_id: id,
-      p_new_status: newStatus,
-      p_remarks: newRemarks || null
-    });
+  const updateReportDetails = async (id, newStatus, newRemarks, priority = undefined) => {
+    const rpcName = priority === undefined
+      ? 'update_report_status'
+      : 'update_report_admin_fields';
+    const rpcArgs = priority === undefined
+      ? {
+          p_report_id: id,
+          p_new_status: newStatus,
+          p_remarks: newRemarks || null
+        }
+      : {
+          p_report_id: id,
+          p_new_status: newStatus,
+          p_remarks: newRemarks || null,
+          p_priority: priority || null
+        };
+
+    const { data, error: updateError } = await supabase.rpc(rpcName, rpcArgs);
 
     if (updateError) throw updateError;
 
@@ -545,7 +555,13 @@ export function AppProvider({ children }) {
     setReports((prevReports) =>
       prevReports.map((report) =>
         report.id === id
-          ? { ...report, status: updatedStatus, statusClass: statusClass(updatedStatus), remarks: newRemarks }
+          ? {
+              ...report,
+              status: updatedStatus,
+              statusClass: statusClass(updatedStatus),
+              remarks: newRemarks,
+              priority: priority !== undefined ? priority : report.priority
+            }
           : report
       )
     );
@@ -669,6 +685,36 @@ export function AppProvider({ children }) {
 
   const deleteResident = async (id) => updateUserStatus(id, 'Disabled');
 
+  const deleteUser = async (id) => {
+    if (session?.user?.role !== 'super_admin') {
+      throw new Error('Only a super admin can delete users.');
+    }
+
+    const targetUser = residents.find((user) => user.id === id);
+
+    if (!targetUser) {
+      throw new Error('User not found.');
+    }
+
+    if (targetUser.role === 'super_admin') {
+      throw new Error('The super admin account cannot be deleted.');
+    }
+
+    const { data, error: deleteError } = await supabase.functions.invoke('delete-user', {
+      body: {
+        user_id: id
+      }
+    });
+
+    if (deleteError) throw deleteError;
+    if (data?.error) throw new Error(data.error);
+
+    setResidents((prevUsers) => prevUsers.filter((user) => user.id !== id));
+
+    await refreshData();
+    return data;
+  };
+
   const toggleResidentStatus = async (id) => {
     const user = residents.find((item) => item.id === id);
     if (!user) throw new Error('User not found.');
@@ -733,6 +779,7 @@ export function AppProvider({ children }) {
     createUser,
     addResident,
     deleteResident,
+    deleteUser,
     toggleResidentStatus,
     sendNotification
   };

@@ -1,9 +1,14 @@
-export const MAUBAN_CENTER = [14.1927, 121.7305];
+export const SOLEDAD_CENTER = [14.1915, 121.7305];
+export const MAUBAN_CENTER = SOLEDAD_CENTER;
+export const DEFAULT_MAP_ZOOM = 17;
+export const MIN_MAP_ZOOM = 16;
+export const MAX_MAP_ZOOM = 19;
 
-export const MAUBAN_BOUNDS = [
-  [14.0900, 121.6400],
-  [14.3200, 121.8400],
+export const SOLEDAD_BOUNDS = [
+  [14.1840, 121.7210],
+  [14.1990, 121.7390],
 ];
+export const MAUBAN_BOUNDS = SOLEDAD_BOUNDS;
 
 export const REPORT_STATUS_COLORS = {
   Pending: '#ef4444',
@@ -15,8 +20,6 @@ export const REPORT_STATUS_COLORS = {
 export const REPORT_STATUS_LEGEND = [
   { status: 'Pending', label: 'New Report', color: REPORT_STATUS_COLORS.Pending },
   { status: 'In Progress', label: 'In Progress', color: REPORT_STATUS_COLORS['In Progress'] },
-  { status: 'Resolved', label: 'Done', color: REPORT_STATUS_COLORS.Resolved },
-  { status: 'Rejected', label: 'Rejected', color: REPORT_STATUS_COLORS.Rejected },
 ];
 
 export function getReportStatusColor(status) {
@@ -25,6 +28,14 @@ export function getReportStatusColor(status) {
 
 export function hasReportCoordinates(report) {
   return Number.isFinite(report.latitude) && Number.isFinite(report.longitude);
+}
+
+export function isReportVisibleOnMap(report) {
+  return (
+    hasReportCoordinates(report) &&
+    report.status !== 'Resolved' &&
+    report.status !== 'Rejected'
+  );
 }
 
 export function buildReportMarkerSvg(color, size = 'normal') {

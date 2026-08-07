@@ -94,6 +94,12 @@
   border: none !important;
 }
 
+.map-custom-icon svg,
+.map-custom-icon path,
+.map-custom-icon circle {
+  pointer-events: none;
+}
+
 /* ─── Leaflet Popup Overrides ─────────────────────────────────── */
 
 .lf-popup-wrapper .leaflet-popup-content-wrapper {
@@ -128,8 +134,16 @@
 .lf-popup-loc {
   font-size: 12px;
   color: #64748b;
-  margin-bottom: 10px;
+  margin-bottom: 4px;
   line-height: 1.4;
+}
+
+.lf-popup-coordinates {
+  font-size: 11px;
+  color: #0f172a;
+  font-weight: 700;
+  margin-bottom: 10px;
+  line-height: 1.35;
 }
 
 .lf-popup-meta {
@@ -155,7 +169,7 @@
   text-transform: capitalize;
 }
 .lf-status-resolved    { background: #d1fae5; color: #065f46; }
-.lf-status-pending     { background: #fee2e2; color: #991b1b; }
+.lf-status-pending     { background: #fef3c7; color: #b45309; }
 .lf-status-inprogress  { background: #dbeafe; color: #1d4ed8; }
 .lf-status-rejected    { background: #ede9fe; color: #6d28d9; }
 

@@ -1,19 +1,38 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { useApp } from '../context/useApp';
-import { Search, X, Edit, ChevronLeft, ChevronRight, Trash2 } from 'lucide-react';
+import {
+  Search, X, Calendar, Filter, Eye, ChevronLeft, ChevronRight, Trash2, Info, ChevronDown
+} from 'lucide-react';
 import cloggedDrainImg from '../assets/clogged_drain.png';
 import { isReportVisibleOnMap } from '../lib/reportMapMarkers';
-import { isReportActiveForReportsPage } from '../lib/reportArchiveRules';
+import { isReportArchived } from '../lib/reportArchiveRules';
 import { formatReportCoordinates } from '../lib/reportCoordinates';
 import { isReportVideo } from '../lib/reportMedia';
 import '../css/reports.css';
+import '../css/archive.css';
 
-const REPORT_TABS = ['All', 'Pending', 'In Progress', 'Resolved', 'Rejected'];
+const MONTHS = [
+  'January', 'February', 'March', 'April', 'May', 'June',
+  'July', 'August', 'September', 'October', 'November', 'December'
+];
+
+const STATIC_YEARS = ['2026', '2027', '2028'];
 const ITEMS_PER_PAGE = 10;
 
+// Helper to format date nicely
+function formatDate(value) {
+  if (!value) return 'N/A';
+  return new Intl.DateTimeFormat('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit'
+  }).format(new Date(value));
+}
 
-export default function Reports() {
+export default function ReportArchive() {
   const {
     reports,
     reportLogs,
@@ -25,22 +44,24 @@ export default function Reports() {
     deleteReport,
     addReportRemark
   } = useApp();
+
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
+
   const initialSearch = searchParams.get('search') || '';
-  const focusReportId = searchParams.get('focus') || '';
-  const requestedStatus = searchParams.get('status') || '';
-  const initialTab = REPORT_TABS.includes(requestedStatus) ? requestedStatus : 'All';
   const [searchQuery, setSearchQuery] = useState(initialSearch);
-  const [activeTab, setActiveTab] = useState(initialTab);
+
+  const [monthFilter, setMonthFilter] = useState('All Months');
+  const [yearFilter, setYearFilter] = useState('All Years');
+  const [statusFilter, setStatusFilter] = useState('All Status');
+  const [sortBy, setSortBy] = useState('Newest First');
   const [currentPage, setCurrentPage] = useState(1);
   const [archiveNow, setArchiveNow] = useState(() => new Date());
 
-  // Edit Modal State
+  // Edit/View Modal State
   const [editingReport, setEditingReport] = useState(null);
   const [remarks, setRemarks] = useState('');
   const [statusVal, setStatusVal] = useState('');
-  const [priorityVal, setPriorityVal] = useState('');
   const [showRemarksPopup, setShowRemarksPopup] = useState(false);
   const [showImagePopup, setShowImagePopup] = useState(false);
 
@@ -55,11 +76,99 @@ export default function Reports() {
     : [];
   const isSuperAdmin = session?.user?.role === 'super_admin';
 
+  useEffect(() => {
+    const timer = window.setInterval(() => setArchiveNow(new Date()), 60 * 1000);
+    return () => window.clearInterval(timer);
+  }, []);
+
+  // Derive available years
+  const availableYears = useMemo(() => {
+    const dbYears = new Set(
+      reports
+        .map((r) => {
+          const d = new Date(r.createdAt || r.dateSubmitted);
+          return isNaN(d) ? null : String(d.getFullYear());
+        })
+        .filter(Boolean)
+    );
+    STATIC_YEARS.forEach((y) => dbYears.add(y));
+    return [...dbYears].sort();
+  }, [reports]);
+
+  // Filtering and Sorting logic
+  const filteredReports = useMemo(() => {
+    let result = reports.filter((report) => {
+      // Search
+      const q = searchQuery.toLowerCase();
+      if (q) {
+        const titleMatch = (report.issue || '').toLowerCase().includes(q);
+        const locationMatch = (report.location || '').toLowerCase().includes(q);
+        const reporterMatch = (report.submittedBy || '').toLowerCase().includes(q);
+        const idMatch = (report.displayId || '').toLowerCase().includes(q);
+        if (!titleMatch && !locationMatch && !reporterMatch && !idMatch) return false;
+      }
+
+      // Month
+      const dateStr = report.createdAt || report.dateSubmitted;
+      if (dateStr) {
+        const d = new Date(dateStr);
+        if (!isNaN(d)) {
+          if (monthFilter !== 'All Months' && MONTHS[d.getMonth()] !== monthFilter) return false;
+          if (yearFilter !== 'All Years' && String(d.getFullYear()) !== yearFilter) return false;
+        }
+      } else {
+        if (monthFilter !== 'All Months' || yearFilter !== 'All Years') return false;
+      }
+
+      // Only show Resolved and Rejected reports after the 24-hour active window.
+      if (!isReportArchived(report, reportLogs, archiveNow)) return false;
+
+      // Status
+      if (statusFilter !== 'All Status' && report.status !== statusFilter) return false;
+
+      return true;
+    });
+
+    // Sorting
+    result.sort((a, b) => {
+      const dateA = new Date(a.updatedAt || a.createdAt || a.dateSubmitted).getTime();
+      const dateB = new Date(b.updatedAt || b.createdAt || b.dateSubmitted).getTime();
+      if (sortBy === 'Newest First') {
+        return dateB - dateA;
+      } else {
+        return dateA - dateB;
+      }
+    });
+
+    return result;
+  }, [archiveNow, reportLogs, reports, searchQuery, monthFilter, yearFilter, statusFilter, sortBy]);
+
+  const totalPages = Math.max(1, Math.ceil(filteredReports.length / ITEMS_PER_PAGE));
+  const safeCurrentPage = Math.min(currentPage, totalPages);
+  const startIndex = (safeCurrentPage - 1) * ITEMS_PER_PAGE;
+  const displayedReports = filteredReports.slice(startIndex, startIndex + ITEMS_PER_PAGE);
+  const firstPageButton = Math.max(1, Math.min(safeCurrentPage - 2, totalPages - 4));
+  const lastPageButton = Math.min(totalPages, firstPageButton + 4);
+  const pageNumbers = Array.from(
+    { length: lastPageButton - firstPageButton + 1 },
+    (_, index) => firstPageButton + index
+  );
+
+  const resetToFirstPage = () => setCurrentPage(1);
+
+  const handleClearFilters = () => {
+    setSearchQuery('');
+    setMonthFilter('All Months');
+    setYearFilter('All Years');
+    setStatusFilter('All Status');
+    setSortBy('Newest First');
+    resetToFirstPage();
+  };
+
   const handleOpenEdit = (report) => {
     setEditingReport(report);
     setRemarks(report.remarks || '');
     setStatusVal(report.status);
-    setPriorityVal(report.priority || '');
     setShowRemarksPopup(false);
     setShowImagePopup(false);
   };
@@ -70,9 +179,8 @@ export default function Reports() {
       alert('Please select a status.');
       return;
     }
-
     try {
-      await updateReportDetails(editingReport.id, statusVal, null, priorityVal || null);
+      await updateReportDetails(editingReport.id, statusVal, null);
       if (remarks.trim()) {
         await addReportRemark(editingReport.id, remarks);
         setRemarks('');
@@ -83,26 +191,12 @@ export default function Reports() {
     }
   };
 
-  const handleAddRemark = async () => {
-    if (!currentEditingReport) return;
-
-    try {
-      await addReportRemark(currentEditingReport.id, remarks);
-      setRemarks('');
-    } catch (remarkError) {
-      alert(remarkError.message || 'Unable to save remark.');
-    }
-  };
-
   const handleDeleteReport = async () => {
     if (!currentEditingReport) return;
-
     const shouldDelete = window.confirm(
       `Delete ${currentEditingReport.displayId}? This will permanently remove the report from the database, resident mobile app, report timeline, notifications, remarks, and admin map.`
     );
-
     if (!shouldDelete) return;
-
     try {
       await deleteReport(currentEditingReport.id);
       setShowRemarksPopup(false);
@@ -113,78 +207,11 @@ export default function Reports() {
     }
   };
 
-  useEffect(() => {
-    const timer = window.setInterval(() => setArchiveNow(new Date()), 60 * 1000);
-    return () => window.clearInterval(timer);
-  }, []);
-
-  // Filter reports by archive eligibility, tab, and search query.
-  const filteredReports = useMemo(() => {
-    const q = searchQuery.toLowerCase();
-    const result = reports.filter((report) => {
-      if (!isReportActiveForReportsPage(report, reportLogs, archiveNow)) return false;
-
-      const matchesTab = activeTab === 'All' || report.status === activeTab;
-      const matchesSearch =
-        !q ||
-        report.issue.toLowerCase().includes(q) ||
-        report.location.toLowerCase().includes(q) ||
-        report.submittedBy.toLowerCase().includes(q) ||
-        report.displayId.toLowerCase().includes(q) ||
-        report.id.toLowerCase().includes(q);
-
-      return matchesTab && matchesSearch;
-    });
-
-    // Sort by submission date descending (newest first).
-    result.sort((a, b) => {
-      const dateA = new Date(a.createdAt || a.dateSubmitted).getTime();
-      const dateB = new Date(b.createdAt || b.dateSubmitted).getTime();
-      return dateB - dateA;
-    });
-
-    return result;
-  }, [activeTab, archiveNow, reportLogs, reports, searchQuery]);
-
-  const focusedReportIndex = focusReportId
-    ? filteredReports.findIndex((report) => report.id === focusReportId || report.displayId === focusReportId)
-    : -1;
-  const totalPages = Math.max(1, Math.ceil(filteredReports.length / ITEMS_PER_PAGE));
-  const focusedReportPage = focusedReportIndex >= 0
-    ? Math.floor(focusedReportIndex / ITEMS_PER_PAGE) + 1
-    : null;
-  const safeCurrentPage = Math.min(focusedReportPage || currentPage, totalPages);
-  const startIndex = (safeCurrentPage - 1) * ITEMS_PER_PAGE;
-  const displayedReports = filteredReports.slice(startIndex, startIndex + ITEMS_PER_PAGE);
-  const firstPageButton = Math.max(1, Math.min(safeCurrentPage - 2, totalPages - 4));
-  const lastPageButton = Math.min(totalPages, firstPageButton + 4);
-  const pageNumbers = Array.from(
-    { length: lastPageButton - firstPageButton + 1 },
-    (_, index) => firstPageButton + index
-  );
-
-  const updatePage = (page) => {
-    const params = new URLSearchParams(searchParams);
-    params.delete('focus');
-    params.delete('status');
-    navigate({
-      pathname: '/reports',
-      search: params.toString(),
-    }, { replace: true });
-    setCurrentPage(page);
-  };
-
-  useEffect(() => {
-    if (!focusReportId) return;
-    const targetRow = document.getElementById(`report-row-${focusReportId}`);
-    targetRow?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-  }, [focusReportId, filteredReports.length]);
-
   return (
-    <div>
+    <div className="archive-page-container">
       {loading && (
         <div className="card" style={{ padding: '30px', marginBottom: '20px', color: '#64748b' }}>
-          Loading reports...
+          Loading archive...
         </div>
       )}
 
@@ -194,109 +221,197 @@ export default function Reports() {
         </div>
       )}
 
-      {/* Filter Tabs + Search on the same row */}
-      <div className="controls-row" style={{ marginBottom: '24px' }}>
-        <div className="filter-tabs">
-          {REPORT_TABS.map((tab) => (
-            <button
-              key={tab}
-              className={`filter-tab ${activeTab === tab ? 'active' : ''}`}
-              onClick={() => {
-                setActiveTab(tab);
-                setCurrentPage(1);
-              }}
-            >
-              {tab}
-            </button>
-          ))}
-        </div>
-
-        {/* Search Field */}
-        <div className="search-input-wrapper">
-          <Search className="search-icon" size={18} />
+      {/* Filters Section */}
+      <div className="archive-filters-row">
+        <div className="archive-search-wrapper">
+          <Search className="archive-search-icon" size={18} />
           <input
             type="text"
-            placeholder="Search report..."
-            className="search-input"
+            placeholder="Search report title or location..."
+            className="archive-search-input"
             value={searchQuery}
-            onChange={(e) => {
-              setSearchQuery(e.target.value);
-              setCurrentPage(1);
-            }}
+            onChange={(e) => { setSearchQuery(e.target.value); resetToFirstPage(); }}
           />
           {searchQuery && (
-            <span className="clear-search-icon" onClick={() => {
-              setSearchQuery('');
-              setCurrentPage(1);
-            }}>
+            <span className="archive-clear-search" onClick={() => { setSearchQuery(''); resetToFirstPage(); }}>
               <X size={16} />
             </span>
           )}
         </div>
+
+        <div className="archive-dropdowns">
+          {/* Month */}
+          <div className="archive-dropdown-group">
+            <span className="archive-dropdown-label">Month</span>
+            <div className="archive-select-container">
+              <Calendar className="archive-select-icon" size={16} />
+              <select
+                value={monthFilter}
+                onChange={(e) => { setMonthFilter(e.target.value); resetToFirstPage(); }}
+                className="archive-select"
+              >
+                <option value="All Months">All Months</option>
+                {MONTHS.map((m) => (
+                  <option key={m} value={m}>{m}</option>
+                ))}
+              </select>
+              <ChevronDown className="archive-select-arrow" size={14} />
+            </div>
+          </div>
+
+          {/* Year */}
+          <div className="archive-dropdown-group">
+            <span className="archive-dropdown-label">Year</span>
+            <div className="archive-select-container">
+              <Calendar className="archive-select-icon" size={16} />
+              <select
+                value={yearFilter}
+                onChange={(e) => { setYearFilter(e.target.value); resetToFirstPage(); }}
+                className="archive-select"
+              >
+                <option value="All Years">All Years</option>
+                {availableYears.map((y) => (
+                  <option key={y} value={y}>{y}</option>
+                ))}
+              </select>
+              <ChevronDown className="archive-select-arrow" size={14} />
+            </div>
+          </div>
+
+          {/* Status */}
+          <div className="archive-dropdown-group">
+            <span className="archive-dropdown-label">Status</span>
+            <div className="archive-select-container">
+              <select
+                value={statusFilter}
+                onChange={(e) => { setStatusFilter(e.target.value); resetToFirstPage(); }}
+                className="archive-select no-icon"
+              >
+                <option value="All Status">All Status</option>
+                <option value="Resolved">Resolved</option>
+                <option value="Rejected">Rejected</option>
+              </select>
+              <ChevronDown className="archive-select-arrow" size={14} />
+            </div>
+          </div>
+
+          {/* Sort By */}
+          <div className="archive-dropdown-group">
+            <span className="archive-dropdown-label">Sort By</span>
+            <div className="archive-select-container">
+              <select
+                value={sortBy}
+                onChange={(e) => { setSortBy(e.target.value); resetToFirstPage(); }}
+                className="archive-select no-icon"
+              >
+                <option value="Newest First">Newest First</option>
+                <option value="Oldest First">Oldest First</option>
+              </select>
+              <ChevronDown className="archive-select-arrow" size={14} />
+            </div>
+          </div>
+
+          {/* Clear Filters */}
+          <button className="archive-btn-clear" onClick={handleClearFilters}>
+            <Filter size={16} />
+            <span>Clear Filters</span>
+          </button>
+        </div>
       </div>
 
-      {/* Reports Table Container */}
-      <div className="card" style={{ padding: '8px 24px 24px' }}>
+      {/* Info Banner */}
+      <div className="archive-info-banner">
+        <div className="archive-info-left">
+          <Info size={18} className="archive-info-icon" />
+          <span>
+            Showing reports for{' '}
+            <strong>
+              {monthFilter === 'All Months' ? '' : `${monthFilter} `}
+              {yearFilter === 'All Years' ? 'All Time' : yearFilter}
+            </strong>
+          </span>
+        </div>
+        <div className="archive-info-right">
+          <strong>{filteredReports.length}</strong> reports found
+        </div>
+      </div>
+
+      {/* Table Card */}
+      <div className="card archive-table-card">
         <div className="table-container">
-          <table className="custom-table">
+          <table className="custom-table archive-table">
             <thead>
               <tr>
-                <th>Title</th>
-                <th>Location</th>
-                <th>Reporter</th>
-                <th>Priority</th>
-                <th>Status</th>
-                <th>Date Submitted</th>
-                <th style={{ textAlign: 'right' }}>Actions</th>
+                <th style={{ width: '50px' }}>#</th>
+                <th>Report Details</th>
+                <th style={{ width: '130px' }}>Status</th>
+                <th style={{ width: '180px' }}>Date Reported</th>
+                <th style={{ width: '180px' }}>Last Updated</th>
+                <th style={{ width: '100px', textAlign: 'center' }}>Actions</th>
               </tr>
             </thead>
             <tbody>
               {displayedReports.length > 0 ? (
-                displayedReports.map((report) => {
-                  const isFocusedReport = focusReportId
-                    ? report.id === focusReportId || report.displayId === focusReportId
-                    : false;
-
+                displayedReports.map((report, index) => {
+                  const displayIndex = startIndex + index + 1;
                   return (
-                  <tr
-                    key={report.id}
-                    id={`report-row-${report.id}`}
-                    className={isFocusedReport ? 'report-row-highlight' : ''}
-                  >
-                    <td>{report.issue}</td>
-                    <td>{report.location}</td>
-                    <td>{report.submittedBy || 'Anonymous'}</td>
-                    <td>
-                      {report.priority ? (
-                        <span className={`priority-badge priority-${report.priority.toLowerCase()}`}>
-                          {report.priority}
+                    <tr key={report.id}>
+                      <td className="archive-row-number">{displayIndex}</td>
+                      <td>
+                        <div className="archive-details-cell">
+                          {isReportVideo(report.imageUrl) ? (
+                            <button
+                              type="button"
+                              className="archive-report-thumb archive-video-thumb"
+                              onClick={() => handleOpenEdit(report)}
+                              aria-label="Open video report"
+                            >
+                              ▶
+                            </button>
+                          ) : (
+                            <img
+                              src={report.imageUrl || cloggedDrainImg}
+                              alt="Report"
+                              className="archive-report-thumb"
+                              onClick={() => handleOpenEdit(report)}
+                            />
+                          )}
+                          <div className="archive-details-text">
+                            <span className="archive-details-title" onClick={() => handleOpenEdit(report)}>
+                              {report.issue}
+                            </span>
+                            <div className="archive-details-loc">
+                              <span className="archive-loc-pin">📍</span>
+                              <span className="archive-loc-text">{report.location}</span>
+                            </div>
+                          </div>
+                        </div>
+                      </td>
+                      <td>
+                        <span className={`status-badge ${report.statusClass}`}>
+                          {report.status}
                         </span>
-                      ) : (
-                        ''
-                      )}
-                    </td>
-                    <td>
-                      <span className={`status-badge ${report.statusClass}`}>
-                        {report.status}
-                      </span>
-                    </td>
-                    <td>{report.dateSubmitted}</td>
-                    <td style={{ textAlign: 'right' }}>
-                      <button
-                        className="btn-delete"
-                        onClick={() => handleOpenEdit(report)}
-                        title="Edit report details"
-                        style={{ color: '#000000' }}
-                      >
-                        <Edit size={16} />
-                      </button>
-                    </td>
-                  </tr>
+                      </td>
+                      <td className="archive-date-cell">{report.dateSubmitted}</td>
+                      <td className="archive-date-cell">
+                        {report.updatedAt ? formatDate(report.updatedAt) : report.dateSubmitted}
+                      </td>
+                      <td style={{ textAlign: 'center' }}>
+                        <button
+                          className="archive-btn-view"
+                          onClick={() => handleOpenEdit(report)}
+                          title="View Details"
+                        >
+                          <Eye size={14} className="archive-btn-view-icon" />
+                          <span>View</span>
+                        </button>
+                      </td>
+                    </tr>
                   );
                 })
               ) : (
                 <tr>
-                  <td colSpan="6" style={{ textAlign: 'center', padding: '40px', color: '#64748b' }}>
+                  <td colSpan="6" className="archive-empty-state">
                     No reports match your filters.
                   </td>
                 </tr>
@@ -304,17 +419,18 @@ export default function Reports() {
             </tbody>
           </table>
         </div>
+
         {filteredReports.length > 0 && (
-          <div className="reports-pagination-container">
-            <div className="reports-pagination-info">
+          <div className="archive-pagination-container">
+            <div className="archive-pagination-info">
               Showing {startIndex + 1} to {Math.min(startIndex + ITEMS_PER_PAGE, filteredReports.length)} of {filteredReports.length} reports
             </div>
-            <div className="reports-pagination-controls">
+            <div className="archive-pagination-controls">
               <button
                 type="button"
-                className="reports-page-btn"
+                className="archive-page-btn"
                 disabled={safeCurrentPage === 1}
-                onClick={() => updatePage(Math.max(1, safeCurrentPage - 1))}
+                onClick={() => setCurrentPage((page) => Math.max(1, page - 1))}
                 aria-label="Previous page"
               >
                 <ChevronLeft size={16} />
@@ -323,17 +439,17 @@ export default function Reports() {
                 <button
                   key={page}
                   type="button"
-                  className={`reports-page-btn ${safeCurrentPage === page ? 'active' : ''}`}
-                  onClick={() => updatePage(page)}
+                  className={`archive-page-btn ${safeCurrentPage === page ? 'active' : ''}`}
+                  onClick={() => setCurrentPage(page)}
                 >
                   {page}
                 </button>
               ))}
               <button
                 type="button"
-                className="reports-page-btn"
+                className="archive-page-btn"
                 disabled={safeCurrentPage === totalPages}
-                onClick={() => updatePage(Math.min(totalPages, safeCurrentPage + 1))}
+                onClick={() => setCurrentPage((page) => Math.min(totalPages, page + 1))}
                 aria-label="Next page"
               >
                 <ChevronRight size={16} />
@@ -343,15 +459,14 @@ export default function Reports() {
         )}
       </div>
 
-      {/* Edit Details Popup Modal */}
+      {/* Edit/View Modal Popup */}
       {currentEditingReport && (
         <div className="modal-overlay report-modal-overlay" onClick={() => setEditingReport(null)}>
           <div className="report-modal-content" onClick={(e) => e.stopPropagation()}>
             
-            {/* Back Button Link */}
             <button className="back-link" onClick={() => setEditingReport(null)}>
               <ChevronLeft size={20} />
-              <span>Back to Reports</span>
+              <span>Back to Archive</span>
             </button>
 
             <div className="report-modal-grid">
@@ -426,7 +541,6 @@ export default function Reports() {
                   )}
                 </button>
               </section>
-
             </div>
 
             <div className="report-timeline-section">
@@ -453,72 +567,35 @@ export default function Reports() {
               )}
             </div>
 
-            {/* Bottom edit inputs form */}
             <form className="report-action-form" onSubmit={handleSave}>
               <div className="report-edit-controls">
-                
-                {/* Remarks field */}
                 <div className="report-form-field">
-                  <div className="remarks-header-row">
-                    <label className="form-label" style={{ fontWeight: '600' }}>Admin Remark</label>
+                  <div className="remarks-header-row" style={{ flexDirection: 'column', alignItems: 'flex-start', gap: '8px' }}>
+                    <label className="form-label" style={{ fontWeight: '600', marginBottom: 0 }}>Admin Remarks</label>
                     <button
                       type="button"
                       className="btn-show-remarks"
                       onClick={() => setShowRemarksPopup(true)}
+                      style={{ paddingLeft: 0, background: 'none', border: 'none', color: 'var(--primary)', cursor: 'pointer', fontWeight: '600' }}
                     >
                       Show all remarks ({currentReportRemarks.length})
                     </button>
                   </div>
-                  <textarea
-                    placeholder="Enter admin note..."
-                    className="remarks-input-box"
-                    value={remarks}
-                    onChange={(e) => setRemarks(e.target.value)}
-                  />
-                  <button
-                    type="button"
-                    className="btn-save-remark"
-                    onClick={handleAddRemark}
-                    disabled={!remarks.trim()}
-                  >
-                    Save Remark
-                  </button>
                 </div>
 
-                {/* Dropdown status selection */}
                 <div className="report-form-field">
-                  <label className="form-label" style={{ fontWeight: '600' }}>Update Status To</label>
+                  <label className="form-label" style={{ fontWeight: '600' }}>Archived Status</label>
                   <select
                     className="status-select-box"
                     value={statusVal}
-                    onChange={(e) => setStatusVal(e.target.value)}
+                    disabled
                   >
-                    <option value="Pending">Pending</option>
-                    <option value="In Progress">In Progress</option>
                     <option value="Resolved">Resolved</option>
                     <option value="Rejected">Rejected</option>
                   </select>
                 </div>
-
-                <div className="report-form-field">
-                  <label className="form-label" style={{ fontWeight: '600' }}>Priority Level</label>
-                  <select
-                    className="status-select-box"
-                    value={priorityVal}
-                    onChange={(e) => setPriorityVal(e.target.value)}
-                    style={{ color: priorityVal === '' ? '#94a3b8' : 'var(--text-dark)' }}
-                  >
-                    <option value="" style={{ color: '#94a3b8' }} hidden>Set Priority</option>
-                    <option value="Low" style={{ color: 'var(--text-dark)' }}>Low</option>
-                    <option value="Medium" style={{ color: 'var(--text-dark)' }}>Medium</option>
-                    <option value="High" style={{ color: 'var(--text-dark)' }}>High</option>
-                    <option value="Critical" style={{ color: 'var(--text-dark)' }}>Critical</option>
-                  </select>
-                </div>
-
               </div>
 
-              {/* Submit Buttons */}
               <div className="notif-btn-row report-modal-actions">
                 {isSuperAdmin && (
                   <button
@@ -537,19 +614,14 @@ export default function Reports() {
                     setShowRemarksPopup(false);
                     setEditingReport(null);
                   }}
+                  style={{ minWidth: '100px' }}
                 >
-                  Cancel
-                </button>
-                <button 
-                  type="submit" 
-                  className="btn-send-notif" 
-                >
-                  Update Status
+                  Close
                 </button>
               </div>
             </form>
-
           </div>
+
           {showRemarksPopup && (
             <div className="remarks-popup-overlay" onClick={() => setShowRemarksPopup(false)}>
               <div className="remarks-popup-card" onClick={(e) => e.stopPropagation()}>
@@ -588,6 +660,7 @@ export default function Reports() {
               </div>
             </div>
           )}
+
           {showImagePopup && (
             <div className="image-popup-overlay" onClick={() => setShowImagePopup(false)}>
               <div className="image-popup-card" onClick={(e) => e.stopPropagation()}>

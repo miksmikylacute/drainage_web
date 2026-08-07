@@ -1,16 +1,274 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useApp } from '../context/useApp';
 import { ChevronRight, CircleDot, ShieldCheck, UserCog, Users } from 'lucide-react';
 import {
   buildReportMarkerSvg,
+  DEFAULT_MAP_ZOOM,
   getReportStatusColor,
-  hasReportCoordinates,
+  isReportVisibleOnMap,
   MAUBAN_BOUNDS,
   MAUBAN_CENTER,
   REPORT_STATUS_LEGEND,
 } from '../lib/reportMapMarkers';
 import '../css/dashboard.css';
+
+const STATUS_LINE_SERIES = [
+  { status: 'Pending', label: 'Pending', color: '#ef4444' },
+  { status: 'In Progress', label: 'In Progress', color: '#2563eb' },
+  { status: 'Resolved', label: 'Resolved', color: '#10b981' },
+  { status: 'Rejected', label: 'Rejected', color: '#8b5cf6' },
+];
+
+function startOfLocalDay(date) {
+  return new Date(date.getFullYear(), date.getMonth(), date.getDate());
+}
+
+function monthKey(date) {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+}
+
+function dayKey(date) {
+  return `${monthKey(date)}-${String(date.getDate()).padStart(2, '0')}`;
+}
+
+function formatMonthLabel(value) {
+  const [year, month] = value.split('-').map(Number);
+  return new Date(year, month - 1, 1).toLocaleDateString('en-US', {
+    month: 'long',
+    year: 'numeric',
+  });
+}
+
+function reportCreatedDate(report) {
+  const createdAt = report.createdAt || report.dateSubmitted;
+  const date = createdAt ? new Date(createdAt) : null;
+  return date && !Number.isNaN(date.getTime()) ? date : null;
+}
+
+function buildMonthOptions(reports) {
+  const reportDates = reports.map(reportCreatedDate).filter(Boolean);
+  const today = new Date();
+  const minDate = reportDates.length > 0
+    ? new Date(Math.min(...reportDates.map((date) => date.getTime())))
+    : today;
+  const maxDate = reportDates.length > 0
+    ? new Date(Math.max(today.getTime(), ...reportDates.map((date) => date.getTime())))
+    : today;
+  const options = [];
+  const cursor = new Date(minDate.getFullYear(), minDate.getMonth(), 1);
+  const lastMonth = new Date(maxDate.getFullYear(), maxDate.getMonth(), 1);
+
+  while (cursor <= lastMonth) {
+    options.push(monthKey(cursor));
+    cursor.setMonth(cursor.getMonth() + 1);
+  }
+
+  return options
+    .sort((a, b) => b.localeCompare(a))
+    .map((value) => ({ value, label: formatMonthLabel(value) }));
+}
+
+function buildYAxisTicks(maxValue) {
+  if (maxValue <= 10) {
+    return Array.from({ length: maxValue + 1 }, (_, index) => index);
+  }
+
+  const step = Math.ceil(maxValue / 5);
+  const ticks = [];
+  for (let value = 0; value < maxValue; value += step) {
+    ticks.push(value);
+  }
+  ticks.push(maxValue);
+  return ticks;
+}
+
+function buildStatusTrendData(reports, selectedMonth) {
+  const [year, month] = selectedMonth.split('-').map(Number);
+  const daysInMonth = new Date(year, month, 0).getDate();
+  const days = Array.from({ length: daysInMonth }, (_, index) => {
+    const date = new Date(year, month - 1, index + 1);
+    return {
+      key: dayKey(date),
+      label: String(index + 1),
+      fullLabel: date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+    };
+  });
+
+  const counts = Object.fromEntries(
+    STATUS_LINE_SERIES.map((series) => [
+      series.status,
+      Object.fromEntries(days.map((day) => [day.key, 0])),
+    ])
+  );
+
+  reports.forEach((report) => {
+    if (!counts[report.status]) return;
+
+    const createdAt = reportCreatedDate(report);
+    if (!createdAt) return;
+
+    const reportDayKey = dayKey(startOfLocalDay(createdAt));
+    if (counts[report.status][reportDayKey] !== undefined) {
+      counts[report.status][reportDayKey] += 1;
+    }
+  });
+
+  const maxValue = Math.max(
+    1,
+    ...STATUS_LINE_SERIES.flatMap((series) =>
+      days.map((day) => counts[series.status][day.key])
+    )
+  );
+
+  return { days, counts, maxValue };
+}
+
+function buildSmoothPath(points) {
+  if (points.length === 0) return '';
+  if (points.length === 1) return `M ${points[0].x} ${points[0].y}`;
+
+  return points.reduce((path, point, index) => {
+    if (index === 0) return `M ${point.x} ${point.y}`;
+
+    const previous = points[index - 1];
+    const controlDistance = (point.x - previous.x) * 0.45;
+    const controlStartX = previous.x + controlDistance;
+    const controlEndX = point.x - controlDistance;
+    return `${path} C ${controlStartX} ${previous.y}, ${controlEndX} ${point.y}, ${point.x} ${point.y}`;
+  }, '');
+}
+
+function StatusLineChart({ reports }) {
+  const monthOptions = useMemo(() => buildMonthOptions(reports), [reports]);
+  const [selectedMonth, setSelectedMonth] = useState(() => monthKey(new Date()));
+  const { days, counts, maxValue } = useMemo(
+    () => buildStatusTrendData(reports, selectedMonth),
+    [reports, selectedMonth]
+  );
+  const width = 1180;
+  const height = 310;
+  const padding = { top: 18, right: 18, bottom: 58, left: 58 };
+  const chartWidth = width - padding.left - padding.right;
+  const chartHeight = height - padding.top - padding.bottom;
+  const yTicks = buildYAxisTicks(maxValue);
+
+  const getX = (index) =>
+    padding.left + (days.length === 1 ? chartWidth / 2 : (chartWidth / (days.length - 1)) * index);
+  const getY = (value) =>
+    padding.top + chartHeight - (value / maxValue) * chartHeight;
+
+  return (
+    <div className="status-line-card card">
+      <div className="section-header">
+        <h2>Report Status Trend</h2>
+        <div className="status-line-controls">
+          <span className="status-line-subtitle">Daily by status</span>
+          <select
+            className="status-line-select"
+            value={selectedMonth}
+            onChange={(event) => setSelectedMonth(event.target.value)}
+            aria-label="Select trend month"
+          >
+            {monthOptions.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+        </div>
+      </div>
+      <div className="status-line-chart-wrap">
+        <svg
+          className="status-line-chart"
+          viewBox={`0 0 ${width} ${height}`}
+          role="img"
+          aria-label={`Line graph showing report status counts for ${formatMonthLabel(selectedMonth)}`}
+        >
+          <text
+            x={padding.left + chartWidth / 2}
+            y={height - 12}
+            className="status-line-axis-title"
+            textAnchor="middle"
+          >
+            Date
+          </text>
+          <text
+            x={16}
+            y={padding.top + chartHeight / 2}
+            className="status-line-axis-title"
+            textAnchor="middle"
+            transform={`rotate(-90 16 ${padding.top + chartHeight / 2})`}
+          >
+            Reports
+          </text>
+
+          {yTicks.map((tick) => {
+            const y = getY(tick);
+            return (
+              <g key={tick}>
+                <line
+                  x1={padding.left}
+                  x2={width - padding.right}
+                  y1={y}
+                  y2={y}
+                  className="status-line-grid"
+                />
+                <text x={padding.left - 10} y={y + 4} className="status-line-axis-label" textAnchor="end">
+                  {tick}
+                </text>
+              </g>
+            );
+          })}
+
+          {days.map((day, index) => (
+            <text
+              key={day.key}
+              x={getX(index)}
+              y={height - 32}
+              className="status-line-day-label"
+              textAnchor="middle"
+            >
+              {day.label}
+            </text>
+          ))}
+
+          {STATUS_LINE_SERIES.map((series) => {
+            const points = days.map((day, index) => ({
+              x: getX(index),
+              y: getY(counts[series.status][day.key]),
+              value: counts[series.status][day.key],
+            }));
+            const pathData = buildSmoothPath(points);
+
+            return (
+              <g key={series.status}>
+                <path
+                  d={pathData}
+                  fill="none"
+                  stroke={series.color}
+                  strokeWidth="2.5"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  className="status-line-path"
+                />
+                <title>{`${series.label} trend for ${formatMonthLabel(selectedMonth)}`}</title>
+              </g>
+            );
+          })}
+        </svg>
+      </div>
+      <div className="status-line-legend">
+        {STATUS_LINE_SERIES.map((series) => (
+          <span key={series.status} className="status-line-legend-item">
+            <span className="status-line-legend-dot" style={{ backgroundColor: series.color }} />
+            {series.label}
+          </span>
+        ))}
+      </div>
+    </div>
+  );
+}
 
 function DashboardMiniMap({ reports }) {
   const mapRef = useRef(null);
@@ -29,11 +287,11 @@ function DashboardMiniMap({ reports }) {
 
       const map = L.map(mapRef.current, {
         center: MAUBAN_CENTER,
-        zoom: 13,
-        minZoom: 11,
-        maxZoom: 18,
+        zoom: DEFAULT_MAP_ZOOM,
+        minZoom: 16,
+        maxZoom: 19,
         maxBounds: MAUBAN_BOUNDS,
-        maxBoundsViscosity: 0.9,
+        maxBoundsViscosity: 1.0,
         zoomControl: false,
         attributionControl: false,
       });
@@ -43,7 +301,7 @@ function DashboardMiniMap({ reports }) {
       setTimeout(() => map.invalidateSize(), 0);
 
       L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        maxZoom: 18,
+        maxZoom: 19,
       }).addTo(map);
     }
 
@@ -68,7 +326,7 @@ function DashboardMiniMap({ reports }) {
       markersRef.current.forEach((marker) => marker.remove());
       markersRef.current = [];
 
-      const geoReports = reports.filter(hasReportCoordinates);
+      const geoReports = reports.filter(isReportVisibleOnMap);
 
       geoReports.forEach((report) => {
         const icon = L.divIcon({
@@ -90,7 +348,7 @@ function DashboardMiniMap({ reports }) {
         );
         map.fitBounds(bounds.pad(0.25), { maxZoom: 16 });
       } else {
-        map.setView(MAUBAN_CENTER, 13);
+        map.setView(MAUBAN_CENTER, DEFAULT_MAP_ZOOM);
       }
     }
 
@@ -231,6 +489,8 @@ export default function Dashboard() {
           </table>
         </div>
       </div>
+
+      <StatusLineChart reports={reports} />
 
       {/* Bottom Row: Pie Chart | Reports by Location | System Info */}
       <div className="dashboard-bottom-grid">

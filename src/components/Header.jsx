@@ -20,6 +20,8 @@ export default function Header() {
         return 'Dashboard';
       case '/reports':
         return 'All Reports';
+      case '/archive':
+        return 'Report Archive';
       case '/map':
         return 'Reports Map View';
       case '/residents':
@@ -37,6 +39,8 @@ export default function Header() {
         return 'Welcome Back, Admin!';
       case '/reports':
         return 'View and manage all submitted reports';
+      case '/archive':
+        return 'View and manage all your previously submitted reports';
       case '/map':
         return 'Visualize report locations on the map';
       case '/residents':
@@ -72,7 +76,7 @@ export default function Header() {
       await updateCurrentProfile({
         fullname,
         phone,
-        email,
+        email: session?.user?.email || email,
         avatarFile
       });
       setIsProfileOpen(false);
@@ -152,7 +156,15 @@ export default function Header() {
 
               <div className="form-group">
                 <label className="form-label">Email</label>
-                <input className="form-input" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
+                <input
+                  className="form-input"
+                  type="email"
+                  value={email}
+                  disabled
+                  readOnly
+                  title="Admin email addresses cannot be changed from the profile editor."
+                />
+                <p className="form-help-text">Email cannot be edited for admin accounts.</p>
               </div>
 
               <div className="modal-actions">
