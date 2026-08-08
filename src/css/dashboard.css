@@ -110,8 +110,12 @@
 }
 
 .stat-card.pending {
-  background-color: #fef2f2;
-  border-color: #fecaca;
+  background-color: #fff9e6;
+  border-color: #ffe58f;
+}
+
+.stat-card.pending .stat-value {
+  color: #d97706;
 }
 
 .stat-card.inprogress {
@@ -119,14 +123,26 @@
   border-color: #bfdbfe;
 }
 
+.stat-card.inprogress .stat-value {
+  color: #2563eb;
+}
+
 .stat-card.resolved {
-  background-color: #ecfdf5;
-  border-color: #a7f3d0;
+  background-color: #f0fdf4;
+  border-color: #bbf7d0;
+}
+
+.stat-card.resolved .stat-value {
+  color: #16a34a;
 }
 
 .stat-card.rejected {
-  background-color: #f5f3ff;
-  border-color: #ddd6fe;
+  background-color: #fef2f2;
+  border-color: #fecaca;
+}
+
+.stat-card.rejected .stat-value {
+  color: #dc2626;
 }
 
 .section-header {
@@ -215,15 +231,15 @@
 }
 
 .legend-color.inprogress {
-  background-color: #2563eb;
+  background-color: #3B82F6;
 }
 
 .legend-color.resolved {
-  background-color: #10b981;
+  background-color: #22C55E;
 }
 
 .legend-color.rejected {
-  background-color: #8b5cf6;
+  background-color: #EF4444;
 }
 
 .legend-value {

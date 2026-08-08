@@ -11,13 +11,13 @@
   --text-muted: #64748b;
   --border: #e2e8f0;
   
-  --status-resolved: #10b981;
-  --status-resolved-bg: #e6fcf2;
-  --status-inprogress: #2563eb;
-  --status-inprogress-bg: #ebf5ff;
-  --status-rejected: #8b5cf6;
+  --status-resolved: #22C55E;
+  --status-resolved-bg: #e6f7ed;
+  --status-inprogress: #3B82F6;
+  --status-inprogress-bg: #eff6ff;
+  --status-rejected: #EF4444;
   --status-rejected-bg: #fef2f2;
-  --status-pending: #ef4444;
+  --status-pending: #FFC107;
   --status-pending-bg: #fff9e6;
 
   --font-family: 'Inter', system-ui, -apple-system, sans-serif;
@@ -207,21 +207,16 @@ a {
 }
 
 .priority-badge.priority-low {
-  background-color: #f1f5f9;
-  color: #475569;
+  background-color: #fff9e6;
+  color: #d97706;
 }
 
 .priority-badge.priority-medium {
-  background-color: #eff6ff;
-  color: #1d4ed8;
+  background-color: #ffedd5;
+  color: #c2410c;
 }
 
 .priority-badge.priority-high {
-  background-color: #fff7ed;
-  color: #ea580c;
-}
-
-.priority-badge.priority-critical {
   background-color: #fef2f2;
   color: #dc2626;
 }

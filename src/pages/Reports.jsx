@@ -136,10 +136,26 @@ export default function Reports() {
       return matchesTab && matchesSearch;
     });
 
-    // Sort by submission date descending (newest first).
+    // Sort by priority hierarchy (High -> Medium -> Low -> None), then by submission date (newest first).
     result.sort((a, b) => {
-      const dateA = new Date(a.createdAt || a.dateSubmitted).getTime();
-      const dateB = new Date(b.createdAt || b.dateSubmitted).getTime();
+      const getPriorityRank = (priority) => {
+        if (!priority) return 4;
+        const p = String(priority).trim().toLowerCase();
+        if (p === 'high') return 1;
+        if (p === 'medium') return 2;
+        if (p === 'low') return 3;
+        return 4;
+      };
+
+      const rankA = getPriorityRank(a.priority);
+      const rankB = getPriorityRank(b.priority);
+
+      if (rankA !== rankB) {
+        return rankA - rankB;
+      }
+
+      const dateA = new Date(a.createdAt || a.dateSubmitted).getTime() || 0;
+      const dateB = new Date(b.createdAt || b.dateSubmitted).getTime() || 0;
       return dateB - dateA;
     });
 
@@ -512,7 +528,6 @@ export default function Reports() {
                     <option value="Low" style={{ color: 'var(--text-dark)' }}>Low</option>
                     <option value="Medium" style={{ color: 'var(--text-dark)' }}>Medium</option>
                     <option value="High" style={{ color: 'var(--text-dark)' }}>High</option>
-                    <option value="Critical" style={{ color: 'var(--text-dark)' }}>Critical</option>
                   </select>
                 </div>
 

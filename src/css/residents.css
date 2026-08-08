@@ -57,11 +57,11 @@
 }
 
 .status-toggle-btn.active {
-  color: #10b981;
+  color: #22C55E;
 }
 
 .status-toggle-btn.inactive {
-  color: #ef4444;
+  color: #EF4444;
 }
 
 .residents-pagination-container {

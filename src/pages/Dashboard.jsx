@@ -5,19 +5,22 @@ import { ChevronRight, CircleDot, ShieldCheck, UserCog, Users } from 'lucide-rea
 import {
   buildReportMarkerSvg,
   DEFAULT_MAP_ZOOM,
+  MIN_MAP_ZOOM,
+  MAX_MAP_ZOOM,
   getReportStatusColor,
   isReportVisibleOnMap,
   MAUBAN_BOUNDS,
   MAUBAN_CENTER,
   REPORT_STATUS_LEGEND,
 } from '../lib/reportMapMarkers';
+import { isReportActiveForReportsPage } from '../lib/reportArchiveRules';
 import '../css/dashboard.css';
 
 const STATUS_LINE_SERIES = [
-  { status: 'Pending', label: 'Pending', color: '#ef4444' },
-  { status: 'In Progress', label: 'In Progress', color: '#2563eb' },
-  { status: 'Resolved', label: 'Resolved', color: '#10b981' },
-  { status: 'Rejected', label: 'Rejected', color: '#8b5cf6' },
+  { status: 'Pending', label: 'Pending', color: '#FFC107' },
+  { status: 'In Progress', label: 'In Progress', color: '#3B82F6' },
+  { status: 'Resolved', label: 'Resolved', color: '#22C55E' },
+  { status: 'Rejected', label: 'Rejected', color: '#EF4444' },
 ];
 
 function startOfLocalDay(date) {
@@ -270,11 +273,17 @@ function StatusLineChart({ reports }) {
   );
 }
 
-function DashboardMiniMap({ reports }) {
+function DashboardMiniMap({ reports, reportLogs }) {
   const mapRef = useRef(null);
   const leafletMapRef = useRef(null);
   const markersRef = useRef([]);
   const [mapReady, setMapReady] = useState(false);
+  const [archiveNow, setArchiveNow] = useState(() => new Date());
+
+  useEffect(() => {
+    const timer = window.setInterval(() => setArchiveNow(new Date()), 60 * 1000);
+    return () => window.clearInterval(timer);
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -288,8 +297,8 @@ function DashboardMiniMap({ reports }) {
       const map = L.map(mapRef.current, {
         center: MAUBAN_CENTER,
         zoom: DEFAULT_MAP_ZOOM,
-        minZoom: 16,
-        maxZoom: 19,
+        minZoom: MIN_MAP_ZOOM,
+        maxZoom: MAX_MAP_ZOOM,
         maxBounds: MAUBAN_BOUNDS,
         maxBoundsViscosity: 1.0,
         zoomControl: false,
@@ -326,7 +335,9 @@ function DashboardMiniMap({ reports }) {
       markersRef.current.forEach((marker) => marker.remove());
       markersRef.current = [];
 
-      const geoReports = reports.filter(isReportVisibleOnMap);
+      const geoReports = reports.filter((r) =>
+        isReportVisibleOnMap(r, reportLogs || [], archiveNow)
+      );
 
       geoReports.forEach((report) => {
         const icon = L.divIcon({
@@ -353,13 +364,19 @@ function DashboardMiniMap({ reports }) {
     }
 
     syncMarkers();
-  }, [reports, mapReady]);
+  }, [reports, reportLogs, archiveNow, mapReady]);
 
   return <div ref={mapRef} className="dashboard-mini-map" />;
 }
 
 export default function Dashboard() {
-  const { reports, residents, session, loading, error } = useApp();
+  const { reports, reportLogs, residents, session, loading, error } = useApp();
+  const [archiveNow, setArchiveNow] = useState(() => new Date());
+
+  useEffect(() => {
+    const timer = window.setInterval(() => setArchiveNow(new Date()), 60 * 1000);
+    return () => window.clearInterval(timer);
+  }, []);
 
   // Calculate statistics dynamically
   const totalReports = reports.length;
@@ -376,21 +393,49 @@ export default function Dashboard() {
   const pctRejected = 100 - pctPending - pctInProgress - pctResolved;
 
   const conicGradient = `conic-gradient(
-    #ef4444 0% ${pctPending}%,
-    #2563eb ${pctPending}% ${pctPending + pctInProgress}%,
-    #10b981 ${pctPending + pctInProgress}% ${pctPending + pctInProgress + pctResolved}%,
-    #8b5cf6 ${pctPending + pctInProgress + pctResolved}% 100%
+    #FFC107 0% ${pctPending}%,
+    #3B82F6 ${pctPending}% ${pctPending + pctInProgress}%,
+    #22C55E ${pctPending + pctInProgress}% ${pctPending + pctInProgress + pctResolved}%,
+    #EF4444 ${pctPending + pctInProgress + pctResolved}% 100%
   )`;
 
   const statusChartItems = [
-    { label: 'Pending', count: pendingCount, pct: pctPending, color: '#ef4444' },
-    { label: 'In Progress', count: inProgressCount, pct: pctInProgress, color: '#2563eb' },
-    { label: 'Resolved', count: resolvedCount, pct: pctResolved, color: '#10b981' },
-    { label: 'Rejected', count: rejectedCount, pct: pctRejected, color: '#8b5cf6' }
+    { label: 'Pending', count: pendingCount, pct: pctPending, color: '#FFC107' },
+    { label: 'In Progress', count: inProgressCount, pct: pctInProgress, color: '#3B82F6' },
+    { label: 'Resolved', count: resolvedCount, pct: pctResolved, color: '#22C55E' },
+    { label: 'Rejected', count: rejectedCount, pct: pctRejected, color: '#EF4444' }
   ];
 
-  // Limit recent reports table to latest 3 reports
-  const recentReports = reports.slice(0, 3);
+  // Limit recent reports table to top 3 active reports matching Reports page sorting logic
+  const recentReports = useMemo(() => {
+    const active = reports.filter((report) =>
+      isReportActiveForReportsPage(report, reportLogs || [], archiveNow)
+    );
+
+    active.sort((a, b) => {
+      const getPriorityRank = (priority) => {
+        if (!priority) return 4;
+        const p = String(priority).trim().toLowerCase();
+        if (p === 'high') return 1;
+        if (p === 'medium') return 2;
+        if (p === 'low') return 3;
+        return 4;
+      };
+
+      const rankA = getPriorityRank(a.priority);
+      const rankB = getPriorityRank(b.priority);
+
+      if (rankA !== rankB) {
+        return rankA - rankB;
+      }
+
+      const dateA = new Date(a.createdAt || a.dateSubmitted).getTime() || 0;
+      const dateB = new Date(b.createdAt || b.dateSubmitted).getTime() || 0;
+      return dateB - dateA;
+    });
+
+    return active.slice(0, 3);
+  }, [archiveNow, reportLogs, reports]);
   const residentUsers = residents.filter((user) => user.role === 'resident');
   const adminUsers = residents.filter((user) => user.role === 'admin');
   const superAdminUsers = residents.filter((user) => user.role === 'super_admin');
@@ -459,6 +504,7 @@ export default function Dashboard() {
                 <th>Title</th>
                 <th>Location</th>
                 <th>Reporter</th>
+                <th>Priority</th>
                 <th>Status</th>
                 <th>Date Submitted</th>
               </tr>
@@ -471,6 +517,15 @@ export default function Dashboard() {
                     <td>{report.location}</td>
                     <td>{report.submittedBy || 'Anonymous'}</td>
                     <td>
+                      {report.priority ? (
+                        <span className={`priority-badge priority-${report.priority.toLowerCase()}`}>
+                          {report.priority}
+                        </span>
+                      ) : (
+                        ''
+                      )}
+                    </td>
+                    <td>
                       <span className={`status-badge ${report.statusClass}`}>
                         {report.status}
                       </span>
@@ -480,7 +535,7 @@ export default function Dashboard() {
                 ))
               ) : (
                 <tr>
-                  <td colSpan="5" style={{ textAlign: 'center', padding: '30px', color: '#64748b' }}>
+                  <td colSpan="6" style={{ textAlign: 'center', padding: '30px', color: '#64748b' }}>
                     No reports available.
                   </td>
                 </tr>
@@ -516,7 +571,7 @@ export default function Dashboard() {
             <div className="pie-legend">
               <div className="legend-item">
                 <div className="legend-label-group">
-                  <div className="legend-color" style={{ backgroundColor: '#ef4444' }} />
+                  <div className="legend-color" style={{ backgroundColor: '#FFC107' }} />
                   <span>Pending</span>
                 </div>
                 <span className="legend-value">{pendingCount} ({pctPending}%)</span>
@@ -578,7 +633,7 @@ export default function Dashboard() {
             </Link>
           </div>
           <Link to="/map" className="map-preview" aria-label="Open reports map">
-            <DashboardMiniMap reports={reports} />
+            <DashboardMiniMap reports={reports} reportLogs={reportLogs} />
           </Link>
           <div className="dashboard-map-legend" aria-label="Report status legend">
             {REPORT_STATUS_LEGEND.map((item) => (
@@ -605,7 +660,7 @@ export default function Dashboard() {
             </div>
             <div className="system-info-item">
               <div className="system-info-dot">
-                <CircleDot size={18} color="#10b981" />
+                <CircleDot size={18} color="#22C55E" />
               </div>
               <span className="system-info-label">Reports with pins</span>
               <span className="system-info-value">
