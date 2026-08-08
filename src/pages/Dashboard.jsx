@@ -5,6 +5,8 @@ import { ChevronRight, CircleDot, ShieldCheck, UserCog, Users } from 'lucide-rea
 import {
   buildReportMarkerSvg,
   DEFAULT_MAP_ZOOM,
+  MIN_MAP_ZOOM,
+  MAX_MAP_ZOOM,
   getReportStatusColor,
   isReportVisibleOnMap,
   MAUBAN_BOUNDS,
@@ -295,8 +297,8 @@ function DashboardMiniMap({ reports, reportLogs }) {
       const map = L.map(mapRef.current, {
         center: MAUBAN_CENTER,
         zoom: DEFAULT_MAP_ZOOM,
-        minZoom: 16,
-        maxZoom: 19,
+        minZoom: MIN_MAP_ZOOM,
+        maxZoom: MAX_MAP_ZOOM,
         maxBounds: MAUBAN_BOUNDS,
         maxBoundsViscosity: 1.0,
         zoomControl: false,

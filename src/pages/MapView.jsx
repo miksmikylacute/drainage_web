@@ -4,6 +4,8 @@ import { useApp } from '../context/useApp';
 import {
   buildReportMarkerSvg,
   DEFAULT_MAP_ZOOM,
+  MIN_MAP_ZOOM,
+  MAX_MAP_ZOOM,
   getReportStatusColor,
   isReportVisibleOnMap,
   MAUBAN_BOUNDS,
@@ -43,8 +45,8 @@ export default function MapView() {
       const map = L.map(mapRef.current, {
         center: MAUBAN_CENTER,
         zoom: DEFAULT_MAP_ZOOM,
-        minZoom: 16,
-        maxZoom: 19,
+        minZoom: MIN_MAP_ZOOM,
+        maxZoom: MAX_MAP_ZOOM,
         maxBounds: MAUBAN_BOUNDS,
         maxBoundsViscosity: 1.0,
       });
@@ -106,22 +108,42 @@ export default function MapView() {
 
         const popupContent = document.createElement('div');
         popupContent.className = 'map-popup-card';
+        const statusSlug = (report.status || '').toLowerCase().replace(/\s+/g, '');
         popupContent.innerHTML = `
-          <div class="map-popup-badge" style="background-color: ${color}">
-            ${report.status}
+          <div class="map-popup-header">
+            <span class="map-popup-badge status-${statusSlug}">
+              <span class="map-popup-badge-dot"></span>
+              ${report.status}
+            </span>
           </div>
           <h4 class="map-popup-title">${report.issue}</h4>
-          <p class="map-popup-location">${report.location}</p>
-          <p class="map-popup-coords">
-            <strong>Coords:</strong> ${formatReportCoordinates(report.latitude, report.longitude)}
+          <p class="map-popup-location">
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="map-popup-loc-icon"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>
+            <span>${report.location}</span>
           </p>
-          <p class="map-popup-reporter">By: ${report.submittedBy}</p>
-          <button class="map-popup-action-btn" data-report-id="${report.id}" data-report-status="${report.status}">
-            View details
+          <div class="map-popup-coords-box">
+            <span class="map-popup-coords-label">Coords:</span>
+            <span class="map-popup-coords-val">${formatReportCoordinates(report.latitude, report.longitude)}</span>
+          </div>
+          <div class="map-popup-reporter">
+            <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+            <span>By: <strong>${report.submittedBy}</strong></span>
+          </div>
+          <button class="map-popup-action-btn lf-popup-btn" data-report-id="${report.id}" data-report-status="${report.status}">
+            <span>View details</span>
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
           </button>
         `;
 
-        marker.bindPopup(popupContent);
+        marker.bindPopup(popupContent, {
+          className: 'lf-popup-wrapper',
+          maxWidth: 270,
+          minWidth: 230,
+          autoPan: true,
+          autoPanPadding: [20, 80],
+          autoPanPaddingTopLeft: [20, 80],
+          autoPanPaddingBottomRight: [20, 20],
+        });
 
         marker.on('popupopen', () => {
           const btn = popupContent.querySelector('.map-popup-action-btn');

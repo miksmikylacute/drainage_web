@@ -1,14 +1,14 @@
 import { isReportActiveForReportsPage } from './reportArchiveRules';
 
-export const SOLEDAD_CENTER = [14.1915, 121.7305];
+export const SOLEDAD_CENTER = [14.2050, 121.7250];
 export const MAUBAN_CENTER = SOLEDAD_CENTER;
-export const DEFAULT_MAP_ZOOM = 17;
-export const MIN_MAP_ZOOM = 16;
+export const DEFAULT_MAP_ZOOM = 15;
+export const MIN_MAP_ZOOM = 13;
 export const MAX_MAP_ZOOM = 19;
 
 export const SOLEDAD_BOUNDS = [
-  [14.1840, 121.7210],
-  [14.1990, 121.7390],
+  [14.1700, 121.6950],
+  [14.2350, 121.7550],
 ];
 export const MAUBAN_BOUNDS = SOLEDAD_BOUNDS;
 
