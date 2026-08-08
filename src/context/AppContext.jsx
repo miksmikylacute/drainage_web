@@ -11,6 +11,7 @@ function mapUserProfile(profile) {
     contact: profile.phone || '',
     email: profile.email,
     avatarUrl: profile.avatar_url || '',
+    idCardUrl: profile.id_card_url || '',
     role: profile.role,
     status: profile.status
   };
@@ -132,7 +133,7 @@ export function AppProvider({ children }) {
     try {
       const { data: users, error: usersError } = await supabase
         .from('users')
-        .select('id,email,fullname,phone,avatar_url,role,status,created_at')
+        .select('id,email,fullname,phone,avatar_url,id_card_url,role,status,created_at')
         .in('role', ['resident', 'admin', 'super_admin'])
         .order('created_at', { ascending: false });
 
@@ -249,7 +250,7 @@ export function AppProvider({ children }) {
       ] = await Promise.all([
         supabase
           .from('users')
-          .select('id,email,fullname,phone,avatar_url,role,status,created_at')
+          .select('id,email,fullname,phone,avatar_url,id_card_url,role,status,created_at')
           .in('role', ['resident', 'admin', 'super_admin'])
           .order('created_at', { ascending: false }),
         supabase
@@ -633,11 +634,31 @@ export function AppProvider({ children }) {
     return mappedRemark;
   };
 
-  const createUser = async ({ name, contact, email, password, role }) => {
+  const createUser = async ({ name, contact, email, password, role, idCardFile }) => {
     const requestedRole = role || 'resident';
 
     if (requestedRole === 'admin' && session?.user?.role !== 'super_admin') {
       throw new Error('Only a super admin can create admin accounts.');
+    }
+
+    let uploadedIdUrl = null;
+    if (idCardFile) {
+      const ext = idCardFile.name.split('.').pop()?.toLowerCase() || 'jpg';
+      const fileName = `admin_created/${Date.now()}_${Math.random().toString(36).substring(2, 7)}.${ext}`;
+
+      const { data: uploadData, error: uploadError } = await supabase.storage
+        .from('resident-ids')
+        .upload(fileName, idCardFile, { upsert: true });
+
+      if (uploadError) {
+        throw new Error(`Failed to upload valid ID photo: ${uploadError.message}`);
+      }
+
+      const { data: publicUrlData } = supabase.storage
+        .from('resident-ids')
+        .getPublicUrl(uploadData.path);
+
+      uploadedIdUrl = publicUrlData?.publicUrl || null;
     }
 
     const { data, error: createError } = await supabase.functions.invoke('create-user', {
@@ -646,7 +667,8 @@ export function AppProvider({ children }) {
         phone: contact,
         email,
         password,
-        role: requestedRole
+        role: requestedRole,
+        id_card_url: uploadedIdUrl
       }
     });
 
@@ -676,10 +698,25 @@ export function AppProvider({ children }) {
     if (statusError) throw statusError;
     if (data?.error) throw new Error(data.error);
 
+    if (status === 'Active' && targetUser?.status === 'Pending') {
+      try {
+        await supabase.from('notifications').insert({
+          user_id: id,
+          title: 'Account Verified',
+          message: 'Your resident account registration has been verified by Barangay Soledad admins. You can now submit drainage issue reports!',
+          is_read: false,
+          sent_by: session?.user?.id || null
+        });
+      } catch (notifErr) {
+        console.warn('Failed to send verification notification:', notifErr);
+      }
+    }
+
     setResidents((prevUsers) =>
       prevUsers.map((user) => (user.id === id ? { ...user, status } : user))
     );
 
+    await refreshData();
     return data;
   };
 
@@ -715,11 +752,13 @@ export function AppProvider({ children }) {
     return data;
   };
 
-  const toggleResidentStatus = async (id) => {
+  const toggleResidentStatus = async (id, targetStatus) => {
     const user = residents.find((item) => item.id === id);
     if (!user) throw new Error('User not found.');
-    return updateUserStatus(id, user.status === 'Active' ? 'Disabled' : 'Active');
+    const nextStatus = targetStatus || (user.status === 'Active' ? 'Disabled' : 'Active');
+    return updateUserStatus(id, nextStatus);
   };
+
   const sendNotification = async (residentIds, message) => {
     if (!session?.user) throw new Error('No authenticated admin session.');
 
@@ -780,6 +819,7 @@ export function AppProvider({ children }) {
     addResident,
     deleteResident,
     deleteUser,
+    updateUserStatus,
     toggleResidentStatus,
     sendNotification
   };

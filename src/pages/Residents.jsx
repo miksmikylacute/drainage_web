@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useApp } from '../context/useApp';
-import { ChevronLeft, ChevronRight, Search, Trash2, UserPlus, X } from 'lucide-react';
+import { ChevronLeft, ChevronRight, FileText, Search, Trash2, Upload, UserPlus, X } from 'lucide-react';
 import '../css/residents.css';
 
 const ITEMS_PER_PAGE = 10;
@@ -11,12 +11,13 @@ export default function Residents() {
     createUser,
     session,
     deleteUser,
-    toggleResidentStatus,
+    updateUserStatus,
     loading
   } = useApp();
   const isSuperAdmin = session?.user?.role === 'super_admin';
   
   const [searchQuery, setSearchQuery] = useState('');
+  const [statusFilter, setStatusFilter] = useState('All');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   
@@ -26,6 +27,8 @@ export default function Residents() {
   const [contact, setContact] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [idCardFile, setIdCardFile] = useState(null);
+  const [idCardPreview, setIdCardPreview] = useState(null);
   const [isSaving, setIsSaving] = useState(false);
 
   const [selectedUser, setSelectedUser] = useState(null);
@@ -37,6 +40,9 @@ export default function Residents() {
     setContact('');
     setEmail('');
     setPassword('');
+    setIdCardFile(null);
+    if (idCardPreview) URL.revokeObjectURL(idCardPreview);
+    setIdCardPreview(null);
   };
 
   const openAddModal = () => {
@@ -64,7 +70,8 @@ export default function Residents() {
         name: name.trim(),
         contact: contact.trim(),
         email: email.trim(),
-        password
+        password,
+        idCardFile
       });
 
       resetForm();
@@ -101,12 +108,31 @@ export default function Residents() {
 
   const visibleUsers = residents.filter((user) => isSuperAdmin || user.role === 'resident');
 
-  const filteredUsers = visibleUsers.filter(user => 
-    user.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    user.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    user.contact.includes(searchQuery) ||
-    user.role.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const pendingCount = visibleUsers.filter((u) => u.status === 'Pending').length;
+  const activeCount = visibleUsers.filter((u) => u.status === 'Active' || !u.status).length;
+  const disabledCount = visibleUsers.filter((u) => u.status === 'Disabled').length;
+
+  const filteredUsers = visibleUsers.filter((user) => {
+    const matchesSearch =
+      user.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      user.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      user.contact.includes(searchQuery) ||
+      user.role.toLowerCase().includes(searchQuery.toLowerCase());
+
+    if (!matchesSearch) return false;
+
+    if (statusFilter === 'Pending') {
+      return user.status === 'Pending';
+    }
+    if (statusFilter === 'Active') {
+      return user.status === 'Active' || !user.status;
+    }
+    if (statusFilter === 'Disabled') {
+      return user.status === 'Disabled';
+    }
+    return true;
+  });
+
   const totalPages = Math.max(1, Math.ceil(filteredUsers.length / ITEMS_PER_PAGE));
   const safeCurrentPage = Math.min(currentPage, totalPages);
   const startIndex = (safeCurrentPage - 1) * ITEMS_PER_PAGE;
@@ -120,8 +146,60 @@ export default function Residents() {
 
   return (
     <div>
-      <div className="user-management-title" style={{ justifyContent: 'flex-end' }}>
-        <div style={{ display: 'flex', gap: '12px' }}>
+
+
+      {/* Controls Row: Left Filter Tabs | Right Search & Add Button */}
+      <div className="user-controls-row">
+        {/* Resident Verification Status Filter Tabs */}
+        <div className="resident-filter-tabs">
+          <button
+            type="button"
+            className={`resident-tab ${statusFilter === 'All' ? 'active' : ''}`}
+            onClick={() => {
+              setStatusFilter('All');
+              setCurrentPage(1);
+            }}
+          >
+            <span>All Accounts</span>
+            <span className="resident-tab-count">{visibleUsers.length}</span>
+          </button>
+          <button
+            type="button"
+            className={`resident-tab pending-tab ${pendingCount > 0 ? 'has-pending' : ''} ${statusFilter === 'Pending' ? 'active' : ''}`}
+            onClick={() => {
+              setStatusFilter('Pending');
+              setCurrentPage(1);
+            }}
+          >
+            <span>Pending Approval</span>
+            <span className="resident-tab-count">{pendingCount}</span>
+          </button>
+          <button
+            type="button"
+            className={`resident-tab ${statusFilter === 'Active' ? 'active' : ''}`}
+            onClick={() => {
+              setStatusFilter('Active');
+              setCurrentPage(1);
+            }}
+          >
+            <span>Active</span>
+            <span className="resident-tab-count">{activeCount}</span>
+          </button>
+          <button
+            type="button"
+            className={`resident-tab ${statusFilter === 'Disabled' ? 'active' : ''}`}
+            onClick={() => {
+              setStatusFilter('Disabled');
+              setCurrentPage(1);
+            }}
+          >
+            <span>Disabled</span>
+            <span className="resident-tab-count">{disabledCount}</span>
+          </button>
+        </div>
+
+        {/* Right Search Input & Add User Button */}
+        <div style={{ display: 'flex', gap: '12px', alignItems: 'center', flexWrap: 'wrap' }}>
           <div className="search-input-wrapper">
             <Search className="search-icon" size={18} />
             <input
@@ -144,11 +222,11 @@ export default function Residents() {
             )}
           </div>
 
-          {/* Add Resident Button */}
+          {/* Add User Button */}
           <button 
             className="btn-primary" 
             onClick={openAddModal}
-            style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 18px', borderRadius: '12px' }}
+            style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 18px', borderRadius: '12px', whiteSpace: 'nowrap' }}
           >
             <UserPlus size={18} />
             <span>Add User</span>
@@ -168,6 +246,7 @@ export default function Residents() {
                 <th>Name</th>
                 <th>Contact Number</th>
                 <th>Email</th>
+                <th>Valid ID</th>
                 <th>Role</th>
                 <th>Status</th>
                 <th style={{ textAlign: 'right' }}>Actions</th>
@@ -186,56 +265,95 @@ export default function Residents() {
                         <span className="user-avatar-sm">
                           {user.avatarUrl ? <img src={user.avatarUrl} alt="" /> : user.name.charAt(0)}
                         </span>
-                        <span>{user.name}</span>
+                        <span style={{ fontWeight: '600', color: '#0f172a' }}>{user.name}</span>
                       </div>
                     </td>
-                    <td>{user.contact || '—'}</td>
-                    <td>{user.email}</td>
+                    <td style={{ color: '#334155' }}>{user.contact || '—'}</td>
+                    <td style={{ color: '#334155' }}>{user.email}</td>
+                    <td>
+                      {user.idCardUrl ? (
+                        <button
+                          type="button"
+                          className="btn-view-id-link"
+                          onClick={() => setViewingImageUrl(user.idCardUrl)}
+                          title="Click to view uploaded valid ID photo"
+                        >
+                          <FileText size={14} />
+                          <span>View ID</span>
+                        </button>
+                      ) : (
+                        <span style={{ color: '#94a3b8', fontSize: '13px' }}>—</span>
+                      )}
+                    </td>
                     <td>
                       <span className={`role-badge ${user.role}`}>
                         {user.role === 'super_admin' ? 'Super Admin' : user.role}
                       </span>
                     </td>
                     <td>
-                      <button
-                        title="Click to toggle status"
-                        className={`status-toggle-btn ${user.status.toLowerCase()}`}
-                        disabled={user.role === 'super_admin' || (!isSuperAdmin && user.role !== 'resident')}
-                        onClick={async () => {
-                          try {
-                            await toggleResidentStatus(user.id);
-                          } catch (statusError) {
-                            alert(statusError.message || 'Unable to update user status.');
-                          }
-                        }}
-                      >
-                        {user.status}
-                      </button>
+                      <span className={`user-status-pill status-${user.status ? user.status.toLowerCase() : 'active'}`}>
+                        <span className="status-pill-dot"></span>
+                        {user.status === 'Pending' ? 'Pending' : (user.status || 'Active')}
+                      </span>
                     </td>
                     <td style={{ textAlign: 'right' }}>
-                      <div style={{ display: 'inline-flex', gap: '8px', justifyContent: 'flex-end' }}>
-                        <button
-                          className="btn-secondary"
-                          disabled={user.role === 'super_admin' || (!isSuperAdmin && user.role !== 'resident')}
-                          onClick={async () => {
-                            try {
-                              await toggleResidentStatus(user.id);
-                            } catch (statusError) {
-                              alert(statusError.message || 'Unable to update user status.');
-                            }
-                          }}
-                        >
-                          {user.status === 'Active' ? 'Disable' : 'Enable'}
-                        </button>
+                      <div style={{ display: 'inline-flex', gap: '6px', justifyContent: 'flex-end', alignItems: 'center' }}>
+                        {user.status === 'Pending' ? (
+                          <>
+                            <button
+                              type="button"
+                              className="action-btn-approve"
+                              onClick={async () => {
+                                try {
+                                  await updateUserStatus(user.id, 'Active');
+                                } catch (statusError) {
+                                  alert(statusError.message || 'Unable to approve resident.');
+                                }
+                              }}
+                            >
+                              Approve
+                            </button>
+                            <button
+                              type="button"
+                              className="action-btn-reject"
+                              onClick={async () => {
+                                try {
+                                  await updateUserStatus(user.id, 'Disabled');
+                                } catch (statusError) {
+                                  alert(statusError.message || 'Unable to reject resident.');
+                                }
+                              }}
+                            >
+                              Reject
+                            </button>
+                          </>
+                        ) : (
+                          user.role !== 'super_admin' && (isSuperAdmin || user.role === 'resident') && (
+                            <button
+                              type="button"
+                              className="action-btn-toggle"
+                              title={user.status === 'Active' ? 'Disable this account' : 'Enable this account'}
+                              onClick={async () => {
+                                try {
+                                  await updateUserStatus(user.id, user.status === 'Active' ? 'Disabled' : 'Active');
+                                } catch (statusError) {
+                                  alert(statusError.message || 'Unable to update user status.');
+                                }
+                              }}
+                            >
+                              {user.status === 'Active' ? 'Disable' : 'Enable'}
+                            </button>
+                          )
+                        )}
+
                         {isSuperAdmin && user.role !== 'super_admin' && (
                           <button
-                            className="btn-secondary"
+                            type="button"
+                            className="action-btn-delete"
                             onClick={() => handleDeleteUser(user)}
-                            style={{ color: '#dc2626', borderColor: '#fecaca', display: 'inline-flex', alignItems: 'center', gap: '6px' }}
                             title={`Delete ${user.role} account`}
                           >
-                            <Trash2 size={15} />
-                            <span>Delete</span>
+                            <Trash2 size={14} />
                           </button>
                         )}
                       </div>
@@ -244,7 +362,7 @@ export default function Residents() {
                 ))
               ) : (
                 <tr>
-                  <td colSpan="6" style={{ textAlign: 'center', padding: '40px', color: '#64748b' }}>
+                  <td colSpan="7" style={{ textAlign: 'center', padding: '40px', color: '#64748b' }}>
                     No users found matching your search.
                   </td>
                 </tr>
@@ -365,6 +483,75 @@ export default function Residents() {
                 />
               </div>
 
+              <div className="form-group">
+                <label className="form-label" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span>Valid ID Photo</span>
+                  <span style={{ fontSize: '12px', color: '#64748b', fontWeight: '500' }}>(Optional)</span>
+                </label>
+                <div className="file-upload-wrapper">
+                  <input
+                    type="file"
+                    id="valid-id-file-input"
+                    accept="image/jpeg,image/png,image/webp"
+                    className="file-upload-hidden-input"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) {
+                        setIdCardFile(file);
+                        if (idCardPreview) URL.revokeObjectURL(idCardPreview);
+                        setIdCardPreview(URL.createObjectURL(file));
+                      }
+                    }}
+                  />
+                  <label htmlFor="valid-id-file-input" className="file-upload-box">
+                    <div className="file-upload-trigger-btn">
+                      <Upload size={16} />
+                      <span>Browse Photo</span>
+                    </div>
+                    <span className="file-upload-filename">
+                      {idCardFile ? idCardFile.name : 'No file selected'}
+                    </span>
+                  </label>
+                </div>
+                {idCardPreview && (
+                  <div style={{ marginTop: '10px', position: 'relative', display: 'inline-block' }}>
+                    <img
+                      src={idCardPreview}
+                      alt="Preview ID"
+                      style={{ height: '90px', borderRadius: '10px', border: '1px solid #cbd5e1', objectFit: 'cover', display: 'block' }}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIdCardFile(null);
+                        if (idCardPreview) URL.revokeObjectURL(idCardPreview);
+                        setIdCardPreview(null);
+                      }}
+                      style={{
+                        position: 'absolute',
+                        top: '-8px',
+                        right: '-8px',
+                        backgroundColor: '#ef4444',
+                        color: 'white',
+                        border: 'none',
+                        borderRadius: '50%',
+                        width: '22px',
+                        height: '22px',
+                        fontSize: '12px',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        boxShadow: '0 2px 4px rgba(0,0,0,0.2)'
+                      }}
+                      title="Remove selected ID photo"
+                    >
+                      <X size={13} />
+                    </button>
+                  </div>
+                )}
+              </div>
+
               <div className="modal-actions">
                 <button type="button" className="btn-secondary" onClick={closeModal} disabled={isSaving}>
                   Cancel
@@ -418,9 +605,62 @@ export default function Residents() {
               </div>
               <div style={{ borderBottom: '1px solid #f1f5f9', paddingBottom: '8px' }}>
                 <span style={{ fontSize: '12px', fontWeight: '600', color: 'var(--text-muted)', display: 'block', marginBottom: '2px' }}>Account Status</span>
-                <span className={`status-toggle-btn ${selectedUser.status.toLowerCase()}`} style={{ padding: '0', cursor: 'default' }}>{selectedUser.status}</span>
+                <span className={`status-toggle-btn ${selectedUser.status ? selectedUser.status.toLowerCase() : 'active'}`} style={{ padding: '0', cursor: 'default' }}>
+                  {selectedUser.status === 'Pending' ? 'Pending Verification' : selectedUser.status}
+                </span>
+              </div>
+              <div style={{ borderBottom: '1px solid #f1f5f9', paddingBottom: '8px' }}>
+                <span style={{ fontSize: '12px', fontWeight: '600', color: 'var(--text-muted)', display: 'block', marginBottom: '4px' }}>Submitted Valid ID Photo</span>
+                {selectedUser.idCardUrl ? (
+                  <div style={{ marginTop: '6px', textAlign: 'center' }}>
+                    <img
+                      src={selectedUser.idCardUrl}
+                      alt="Valid ID"
+                      style={{ maxWidth: '100%', maxHeight: '180px', borderRadius: '8px', cursor: 'pointer', border: '1px solid #e2e8f0', objectFit: 'contain' }}
+                      onClick={() => setViewingImageUrl(selectedUser.idCardUrl)}
+                    />
+                    <span style={{ fontSize: '12px', color: '#64748b', display: 'block', marginTop: '4px' }}>Click to expand ID card image</span>
+                  </div>
+                ) : (
+                  <span style={{ fontSize: '14px', color: 'var(--text-muted)' }}>No ID photo attached</span>
+                )}
               </div>
             </div>
+
+            {selectedUser.status === 'Pending' && (
+              <div style={{ display: 'flex', gap: '8px', marginTop: '20px' }}>
+                <button
+                  type="button"
+                  className="btn-primary"
+                  style={{ flex: 1, backgroundColor: '#22C55E' }}
+                  onClick={async () => {
+                    try {
+                      await updateUserStatus(selectedUser.id, 'Active');
+                      setSelectedUser(null);
+                    } catch (e) {
+                      alert(e.message || 'Unable to approve user.');
+                    }
+                  }}
+                >
+                  Approve Resident ID
+                </button>
+                <button
+                  type="button"
+                  className="btn-secondary"
+                  style={{ flex: 1, color: '#dc2626', borderColor: '#fecaca' }}
+                  onClick={async () => {
+                    try {
+                      await updateUserStatus(selectedUser.id, 'Disabled');
+                      setSelectedUser(null);
+                    } catch (e) {
+                      alert(e.message || 'Unable to reject user.');
+                    }
+                  }}
+                >
+                  Reject ID
+                </button>
+              </div>
+            )}
 
             <div className="modal-actions" style={{ marginTop: '32px' }}>
               {isSuperAdmin && selectedUser.role !== 'super_admin' && (
