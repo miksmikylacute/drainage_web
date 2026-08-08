@@ -220,3 +220,23 @@ a {
   background-color: #fef2f2;
   color: #dc2626;
 }
+
+/* Global File Input Styling */
+input[type="file"]::file-selector-button {
+  border: 1px solid #bfdbfe;
+  background-color: #eff6ff;
+  color: #2563eb;
+  padding: 6px 14px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  margin-right: 12px;
+  transition: all 0.2s ease;
+}
+
+input[type="file"]::file-selector-button:hover {
+  background-color: #dbeafe;
+  color: #1d4ed8;
+  border-color: #93c5fd;
+}
