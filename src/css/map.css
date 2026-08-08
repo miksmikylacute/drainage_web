@@ -168,10 +168,10 @@
   border-radius: 20px;
   text-transform: capitalize;
 }
-.lf-status-resolved    { background: #d1fae5; color: #065f46; }
-.lf-status-pending     { background: #fef3c7; color: #b45309; }
-.lf-status-inprogress  { background: #dbeafe; color: #1d4ed8; }
-.lf-status-rejected    { background: #ede9fe; color: #6d28d9; }
+.lf-status-resolved    { background: #f0fdf4; color: #22C55E; }
+.lf-status-pending     { background: #fff9e6; color: #b45309; }
+.lf-status-inprogress  { background: #eff6ff; color: #3B82F6; }
+.lf-status-rejected    { background: #fef2f2; color: #EF4444; }
 
 .lf-popup-btn {
   display: block;

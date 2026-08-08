@@ -17,11 +17,17 @@ export default function MapView() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const focusReportId = searchParams.get('focus');
-  const { reports } = useApp();
+  const { reports, reportLogs } = useApp();
+  const [archiveNow, setArchiveNow] = useState(() => new Date());
   const mapRef = useRef(null);
   const leafletMapRef = useRef(null);
   const markersRef = useRef([]);
   const [mapReady, setMapReady] = useState(false);
+
+  useEffect(() => {
+    const timer = window.setInterval(() => setArchiveNow(new Date()), 60 * 1000);
+    return () => window.clearInterval(timer);
+  }, []);
 
   // Initialise Leaflet once
   useEffect(() => {
@@ -80,7 +86,9 @@ export default function MapView() {
       markersRef.current.forEach((m) => m.remove());
       markersRef.current = [];
 
-      const geoReports = reports.filter(isReportVisibleOnMap);
+      const geoReports = reports.filter((r) =>
+        isReportVisibleOnMap(r, reportLogs || [], archiveNow)
+      );
       let focusedMarker = null;
 
       geoReports.forEach((report) => {
@@ -147,12 +155,12 @@ export default function MapView() {
     }
 
     syncMarkers();
-  }, [reports, navigate, mapReady, focusReportId]);
+  }, [reports, reportLogs, archiveNow, navigate, mapReady, focusReportId]);
 
   return (
     <div className="map-page-wrapper">
       <div className="map-header">
-        <p className="map-page-sub">Showing pending and in-progress drainage reports in Brgy. Soledad, Mauban, Quezon</p>
+        <p className="map-page-sub">Showing drainage reports in Brgy. Soledad, Mauban, Quezon</p>
         <div className="map-legend" aria-label="Report status legend">
           {REPORT_STATUS_LEGEND.map((item) => (
             <span key={item.status} className="map-legend-item">

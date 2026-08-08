@@ -337,19 +337,19 @@
 }
 
 .report-timeline-dot.pending {
-  background: #ef4444;
+  background: #FFC107;
 }
 
 .report-timeline-dot.inprogress {
-  background: #2563eb;
+  background: #3B82F6;
 }
 
 .report-timeline-dot.resolved {
-  background: #10b981;
+  background: #22C55E;
 }
 
 .report-timeline-dot.rejected {
-  background: #8b5cf6;
+  background: #EF4444;
 }
 
 .report-timeline-content {
