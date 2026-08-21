@@ -9,6 +9,7 @@ import ReportArchive from './pages/ReportArchive';
 import MapView from './pages/MapView';
 import Residents from './pages/Residents';
 import Notifications from './pages/Notifications';
+import Hotlines from './pages/Hotlines';
 import './App.css';
 
 function ProtectedLayout() {
@@ -37,6 +38,7 @@ export default function App() {
             <Route path="/map" element={<MapView />} />
             <Route path="/residents" element={<Residents />} />
             <Route path="/notifications" element={<Notifications />} />
+            <Route path="/hotlines" element={<Hotlines />} />
           </Route>
           
           {/* Catch-all redirect to Login */}

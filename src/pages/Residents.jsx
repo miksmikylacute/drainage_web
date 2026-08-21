@@ -27,8 +27,10 @@ export default function Residents() {
   const [contact, setContact] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [idCardFile, setIdCardFile] = useState(null);
-  const [idCardPreview, setIdCardPreview] = useState(null);
+  const [idCardFrontFile, setIdCardFrontFile] = useState(null);
+  const [idCardBackFile, setIdCardBackFile] = useState(null);
+  const [idCardFrontPreview, setIdCardFrontPreview] = useState(null);
+  const [idCardBackPreview, setIdCardBackPreview] = useState(null);
   const [isSaving, setIsSaving] = useState(false);
 
   const [selectedUser, setSelectedUser] = useState(null);
@@ -40,9 +42,12 @@ export default function Residents() {
     setContact('');
     setEmail('');
     setPassword('');
-    setIdCardFile(null);
-    if (idCardPreview) URL.revokeObjectURL(idCardPreview);
-    setIdCardPreview(null);
+    setIdCardFrontFile(null);
+    setIdCardBackFile(null);
+    if (idCardFrontPreview) URL.revokeObjectURL(idCardFrontPreview);
+    if (idCardBackPreview) URL.revokeObjectURL(idCardBackPreview);
+    setIdCardFrontPreview(null);
+    setIdCardBackPreview(null);
   };
 
   const openAddModal = () => {
@@ -71,7 +76,8 @@ export default function Residents() {
         contact: contact.trim(),
         email: email.trim(),
         password,
-        idCardFile
+        idCardFrontFile,
+        idCardBackFile
       });
 
       resetForm();
@@ -271,12 +277,12 @@ export default function Residents() {
                     <td style={{ color: '#334155' }}>{user.contact || '—'}</td>
                     <td style={{ color: '#334155' }}>{user.email}</td>
                     <td>
-                      {user.idCardUrl ? (
+                      {user.idCardFrontUrl || user.idCardBackUrl || user.idCardUrl ? (
                         <button
                           type="button"
                           className="btn-view-id-link"
-                          onClick={() => setViewingImageUrl(user.idCardUrl)}
-                          title="Click to view uploaded valid ID photo"
+                          onClick={() => setSelectedUser(user)}
+                          title="Click to view uploaded valid ID photos"
                         >
                           <FileText size={14} />
                           <span>View ID</span>
@@ -485,71 +491,73 @@ export default function Residents() {
 
               <div className="form-group">
                 <label className="form-label" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <span>Valid ID Photo</span>
+                  <span>Valid ID Photos</span>
                   <span style={{ fontSize: '12px', color: '#64748b', fontWeight: '500' }}>(Optional)</span>
                 </label>
-                <div className="file-upload-wrapper">
-                  <input
-                    type="file"
-                    id="valid-id-file-input"
-                    accept="image/jpeg,image/png,image/webp"
-                    className="file-upload-hidden-input"
-                    onChange={(e) => {
-                      const file = e.target.files?.[0];
-                      if (file) {
-                        setIdCardFile(file);
-                        if (idCardPreview) URL.revokeObjectURL(idCardPreview);
-                        setIdCardPreview(URL.createObjectURL(file));
-                      }
-                    }}
-                  />
-                  <label htmlFor="valid-id-file-input" className="file-upload-box">
-                    <div className="file-upload-trigger-btn">
-                      <Upload size={16} />
-                      <span>Browse Photo</span>
+                <div className="id-upload-grid">
+                  {[
+                    {
+                      side: 'front',
+                      label: 'Front ID',
+                      file: idCardFrontFile,
+                      preview: idCardFrontPreview,
+                      inputId: 'valid-id-front-file-input',
+                      setFile: setIdCardFrontFile,
+                      setPreview: setIdCardFrontPreview
+                    },
+                    {
+                      side: 'back',
+                      label: 'Back ID',
+                      file: idCardBackFile,
+                      preview: idCardBackPreview,
+                      inputId: 'valid-id-back-file-input',
+                      setFile: setIdCardBackFile,
+                      setPreview: setIdCardBackPreview
+                    }
+                  ].map((item) => (
+                    <div key={item.side} className="id-upload-panel">
+                      <input
+                        type="file"
+                        id={item.inputId}
+                        accept="image/jpeg,image/png,image/webp"
+                        className="file-upload-hidden-input"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) {
+                            item.setFile(file);
+                            if (item.preview) URL.revokeObjectURL(item.preview);
+                            item.setPreview(URL.createObjectURL(file));
+                          }
+                        }}
+                      />
+                      <label htmlFor={item.inputId} className="file-upload-box">
+                        <div className="file-upload-trigger-btn">
+                          <Upload size={16} />
+                          <span>{item.label}</span>
+                        </div>
+                        <span className="file-upload-filename">
+                          {item.file ? item.file.name : 'No file selected'}
+                        </span>
+                      </label>
+                      {item.preview && (
+                        <div className="id-upload-preview">
+                          <img src={item.preview} alt={`${item.label} preview`} />
+                          <button
+                            type="button"
+                            onClick={() => {
+                              item.setFile(null);
+                              if (item.preview) URL.revokeObjectURL(item.preview);
+                              item.setPreview(null);
+                            }}
+                            title={`Remove ${item.label}`}
+                          >
+                            <X size={13} />
+                          </button>
+                        </div>
+                      )}
                     </div>
-                    <span className="file-upload-filename">
-                      {idCardFile ? idCardFile.name : 'No file selected'}
-                    </span>
-                  </label>
+                  ))}
                 </div>
-                {idCardPreview && (
-                  <div style={{ marginTop: '10px', position: 'relative', display: 'inline-block' }}>
-                    <img
-                      src={idCardPreview}
-                      alt="Preview ID"
-                      style={{ height: '90px', borderRadius: '10px', border: '1px solid #cbd5e1', objectFit: 'cover', display: 'block' }}
-                    />
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setIdCardFile(null);
-                        if (idCardPreview) URL.revokeObjectURL(idCardPreview);
-                        setIdCardPreview(null);
-                      }}
-                      style={{
-                        position: 'absolute',
-                        top: '-8px',
-                        right: '-8px',
-                        backgroundColor: '#ef4444',
-                        color: 'white',
-                        border: 'none',
-                        borderRadius: '50%',
-                        width: '22px',
-                        height: '22px',
-                        fontSize: '12px',
-                        cursor: 'pointer',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        boxShadow: '0 2px 4px rgba(0,0,0,0.2)'
-                      }}
-                      title="Remove selected ID photo"
-                    >
-                      <X size={13} />
-                    </button>
-                  </div>
-                )}
               </div>
 
               <div className="modal-actions">
@@ -567,7 +575,7 @@ export default function Residents() {
 
       {selectedUser && (
         <div className="modal-overlay" onClick={() => setSelectedUser(null)}>
-          <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ textAlign: 'center' }}>
+          <div className="modal-content user-profile-modal" onClick={(e) => e.stopPropagation()} style={{ textAlign: 'center' }}>
             <div className="modal-header">
               <h2>User Profile</h2>
               <button className="modal-close" onClick={() => setSelectedUser(null)}>
@@ -610,19 +618,36 @@ export default function Residents() {
                 </span>
               </div>
               <div style={{ borderBottom: '1px solid #f1f5f9', paddingBottom: '8px' }}>
-                <span style={{ fontSize: '12px', fontWeight: '600', color: 'var(--text-muted)', display: 'block', marginBottom: '4px' }}>Submitted Valid ID Photo</span>
-                {selectedUser.idCardUrl ? (
-                  <div style={{ marginTop: '6px', textAlign: 'center' }}>
-                    <img
-                      src={selectedUser.idCardUrl}
-                      alt="Valid ID"
-                      style={{ maxWidth: '100%', maxHeight: '180px', borderRadius: '8px', cursor: 'pointer', border: '1px solid #e2e8f0', objectFit: 'contain' }}
-                      onClick={() => setViewingImageUrl(selectedUser.idCardUrl)}
-                    />
-                    <span style={{ fontSize: '12px', color: '#64748b', display: 'block', marginTop: '4px' }}>Click to expand ID card image</span>
+                <span style={{ fontSize: '12px', fontWeight: '600', color: 'var(--text-muted)', display: 'block', marginBottom: '4px' }}>Submitted Valid ID Photos</span>
+                {selectedUser.idCardFrontUrl || selectedUser.idCardBackUrl || selectedUser.idCardUrl ? (
+                  <div className="id-photo-grid">
+                    <div className="id-photo-card">
+                      <span>Front ID</span>
+                      {selectedUser.idCardFrontUrl || selectedUser.idCardUrl ? (
+                        <img
+                          src={selectedUser.idCardFrontUrl || selectedUser.idCardUrl}
+                          alt="Valid ID front"
+                          onClick={() => setViewingImageUrl(selectedUser.idCardFrontUrl || selectedUser.idCardUrl)}
+                        />
+                      ) : (
+                        <div className="id-photo-missing">Missing</div>
+                      )}
+                    </div>
+                    <div className="id-photo-card">
+                      <span>Back ID</span>
+                      {selectedUser.idCardBackUrl ? (
+                        <img
+                          src={selectedUser.idCardBackUrl}
+                          alt="Valid ID back"
+                          onClick={() => setViewingImageUrl(selectedUser.idCardBackUrl)}
+                        />
+                      ) : (
+                        <div className="id-photo-missing">Missing</div>
+                      )}
+                    </div>
                   </div>
                 ) : (
-                  <span style={{ fontSize: '14px', color: 'var(--text-muted)' }}>No ID photo attached</span>
+                  <span style={{ fontSize: '14px', color: 'var(--text-muted)' }}>No ID photos attached</span>
                 )}
               </div>
             </div>

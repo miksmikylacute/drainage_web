@@ -12,6 +12,8 @@ function mapUserProfile(profile) {
     email: profile.email,
     avatarUrl: profile.avatar_url || '',
     idCardUrl: profile.id_card_url || '',
+    idCardFrontUrl: profile.id_card_front_url || profile.id_card_url || '',
+    idCardBackUrl: profile.id_card_back_url || '',
     role: profile.role,
     status: profile.status
   };
@@ -98,6 +100,35 @@ function mapReportRemark(remark) {
   };
 }
 
+function mapAdminNotification(notification) {
+  return {
+    id: notification.id,
+    reportId: notification.report_id,
+    title: notification.title || 'Notification',
+    message: notification.message || '',
+    type: notification.type || 'new_report',
+    isRead: Boolean(notification.is_read),
+    createdAt: notification.created_at,
+    readAt: notification.read_at,
+    readBy: notification.read_by,
+    createdAtLabel: formatDate(notification.created_at)
+  };
+}
+
+function mapHotline(hotline) {
+  return {
+    id: hotline.id,
+    name: hotline.name || '',
+    phoneNumber: hotline.phone_number || '',
+    description: hotline.description || '',
+    category: hotline.category || '',
+    isActive: hotline.is_active !== false,
+    sortOrder: Number(hotline.sort_order) || 0,
+    createdAt: hotline.created_at,
+    updatedAt: hotline.updated_at
+  };
+}
+
 function buildSession(authSession, profile) {
   if (!authSession?.user || !profile) return null;
 
@@ -119,6 +150,8 @@ export function AppProvider({ children }) {
   const [reports, setReports] = useState([]);
   const [residents, setResidents] = useState([]);
   const [notifications, setNotifications] = useState([]);
+  const [adminNotifications, setAdminNotifications] = useState([]);
+  const [hotlines, setHotlines] = useState([]);
   const [reportLogs, setReportLogs] = useState([]);
   const [reportRemarks, setReportRemarks] = useState([]);
   const [session, setSession] = useState(null);
@@ -133,7 +166,7 @@ export function AppProvider({ children }) {
     try {
       const { data: users, error: usersError } = await supabase
         .from('users')
-        .select('id,email,fullname,phone,avatar_url,id_card_url,role,status,created_at')
+        .select('id,email,fullname,phone,avatar_url,id_card_url,id_card_front_url,id_card_back_url,role,status,created_at')
         .in('role', ['resident', 'admin', 'super_admin'])
         .order('created_at', { ascending: false });
 
@@ -198,6 +231,40 @@ export function AppProvider({ children }) {
     }
   }, []);
 
+  const loadAdminNotifications = useCallback(async () => {
+    try {
+      const { data: notificationRows, error: notificationsError } = await supabase
+        .from('admin_notifications')
+        .select('id,report_id,title,message,type,is_read,created_at,read_at,read_by')
+        .order('created_at', { ascending: false });
+
+      if (notificationsError) throw notificationsError;
+      setAdminNotifications((notificationRows || []).map(mapAdminNotification));
+    } catch (loadError) {
+      setError(loadError.message || 'Unable to load admin notifications.');
+    }
+  }, []);
+
+  const loadHotlines = useCallback(async () => {
+    setLoading(true);
+    setError('');
+
+    try {
+      const { data: hotlineRows, error: hotlinesError } = await supabase
+        .from('hotlines')
+        .select('id,name,phone_number,description,category,is_active,sort_order,created_at,updated_at')
+        .order('sort_order', { ascending: true })
+        .order('name', { ascending: true });
+
+      if (hotlinesError) throw hotlinesError;
+      setHotlines((hotlineRows || []).map(mapHotline));
+    } catch (loadError) {
+      setError(loadError.message || 'Unable to load hotlines.');
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
   const loadReportLogs = useCallback(async () => {
     try {
       const { data: logRows, error: logsError } = await supabase
@@ -246,11 +313,13 @@ export function AppProvider({ children }) {
         reportsResult,
         notificationsResult,
         logsResult,
-        remarksResult
+        remarksResult,
+        adminNotificationsResult,
+        hotlinesResult
       ] = await Promise.all([
         supabase
           .from('users')
-          .select('id,email,fullname,phone,avatar_url,id_card_url,role,status,created_at')
+          .select('id,email,fullname,phone,avatar_url,id_card_url,id_card_front_url,id_card_back_url,role,status,created_at')
           .in('role', ['resident', 'admin', 'super_admin'])
           .order('created_at', { ascending: false }),
         supabase
@@ -297,7 +366,16 @@ export function AppProvider({ children }) {
               email
             )
           `)
-          .order('created_at', { ascending: false })
+          .order('created_at', { ascending: false }),
+        supabase
+          .from('admin_notifications')
+          .select('id,report_id,title,message,type,is_read,created_at,read_at,read_by')
+          .order('created_at', { ascending: false }),
+        supabase
+          .from('hotlines')
+          .select('id,name,phone_number,description,category,is_active,sort_order,created_at,updated_at')
+          .order('sort_order', { ascending: true })
+          .order('name', { ascending: true })
       ]);
 
       if (usersResult.error) throw usersResult.error;
@@ -305,10 +383,14 @@ export function AppProvider({ children }) {
       if (notificationsResult.error) throw notificationsResult.error;
       if (logsResult.error) throw logsResult.error;
       if (remarksResult.error) throw remarksResult.error;
+      if (adminNotificationsResult.error) throw adminNotificationsResult.error;
+      if (hotlinesResult.error) throw hotlinesResult.error;
 
       setResidents((usersResult.data || []).map(mapUserProfile));
       setReports((reportsResult.data || []).map(mapReport));
       setNotifications((notificationsResult.data || []).map(mapNotification));
+      setAdminNotifications((adminNotificationsResult.data || []).map(mapAdminNotification));
+      setHotlines((hotlinesResult.data || []).map(mapHotline));
       setReportLogs((logsResult.data || []).map(mapReportLog));
       setReportRemarks((remarksResult.data || []).map(mapReportRemark).reverse());
     } catch (loadError) {
@@ -438,12 +520,26 @@ export function AppProvider({ children }) {
           loadReportRemarks();
         }
       )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'admin_notifications' },
+        () => {
+          loadAdminNotifications();
+        }
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'hotlines' },
+        () => {
+          loadHotlines();
+        }
+      )
       .subscribe();
 
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [loadNotifications, loadReportLogs, loadReportRemarks, loadReports, loadUsers, session?.user]);
+  }, [loadAdminNotifications, loadHotlines, loadNotifications, loadReportLogs, loadReportRemarks, loadReports, loadUsers, session?.user]);
 
   const signIn = async (email, password) => {
     if (!email.trim() || !password) {
@@ -465,6 +561,8 @@ export function AppProvider({ children }) {
     setReports([]);
     setResidents([]);
     setNotifications([]);
+    setAdminNotifications([]);
+    setHotlines([]);
     setReportLogs([]);
     setReportRemarks([]);
   };
@@ -570,6 +668,93 @@ export function AppProvider({ children }) {
     await loadReportLogs();
   };
 
+  const markAdminNotificationRead = async (id) => {
+    const { data, error: readError } = await supabase.rpc('mark_admin_notification_read', {
+      p_notification_id: id
+    });
+
+    if (readError) throw readError;
+
+    const mappedNotification = data ? mapAdminNotification(data) : null;
+    if (mappedNotification) {
+      setAdminNotifications((prevNotifications) =>
+        prevNotifications.map((notification) =>
+          notification.id === id ? mappedNotification : notification
+        )
+      );
+    }
+
+    return mappedNotification;
+  };
+
+  const markAllAdminNotificationsRead = async () => {
+    const { error: readError } = await supabase.rpc('mark_all_admin_notifications_read');
+    if (readError) throw readError;
+    await loadAdminNotifications();
+  };
+
+  const saveHotline = async (hotline) => {
+    if (!session?.user) throw new Error('No authenticated admin session.');
+
+    const row = {
+      name: hotline.name.trim(),
+      phone_number: hotline.phoneNumber.trim(),
+      description: hotline.description?.trim() || null,
+      category: hotline.category?.trim() || null,
+      is_active: hotline.isActive !== false,
+      sort_order: Number(hotline.sortOrder) || 0,
+      updated_by: session.user.id
+    };
+
+    if (!row.name || !row.phone_number) {
+      throw new Error('Hotline name and phone number are required.');
+    }
+
+    if (hotline.id) {
+      const { data, error: updateError } = await supabase
+        .from('hotlines')
+        .update(row)
+        .eq('id', hotline.id)
+        .select('id,name,phone_number,description,category,is_active,sort_order,created_at,updated_at')
+        .single();
+
+      if (updateError) throw updateError;
+      const mappedHotline = mapHotline(data);
+      setHotlines((prevHotlines) =>
+        prevHotlines.map((item) => (item.id === mappedHotline.id ? mappedHotline : item))
+      );
+      await loadHotlines();
+      return mappedHotline;
+    }
+
+    const { data, error: insertError } = await supabase
+      .from('hotlines')
+      .insert({
+        ...row,
+        created_by: session.user.id
+      })
+      .select('id,name,phone_number,description,category,is_active,sort_order,created_at,updated_at')
+      .single();
+
+    if (insertError) throw insertError;
+    const mappedHotline = mapHotline(data);
+    setHotlines((prevHotlines) => [...prevHotlines, mappedHotline]);
+    await loadHotlines();
+    return mappedHotline;
+  };
+
+  const deleteHotline = async (id) => {
+    const { error: deleteError } = await supabase
+      .from('hotlines')
+      .delete()
+      .eq('id', id);
+
+    if (deleteError) throw deleteError;
+
+    setHotlines((prevHotlines) => prevHotlines.filter((hotline) => hotline.id !== id));
+    await loadHotlines();
+  };
+
   const deleteReport = async (id) => {
     if (session?.user?.role !== 'super_admin') {
       throw new Error('Only a super admin can delete reports.');
@@ -590,12 +775,16 @@ export function AppProvider({ children }) {
     setNotifications((prevNotifications) =>
       prevNotifications.filter((notification) => notification.reportId !== id)
     );
+    setAdminNotifications((prevNotifications) =>
+      prevNotifications.filter((notification) => notification.reportId !== id)
+    );
 
     await Promise.all([
       loadReports(),
       loadReportLogs(),
       loadReportRemarks(),
-      loadNotifications()
+      loadNotifications(),
+      loadAdminNotifications()
     ]);
   };
 
@@ -634,32 +823,46 @@ export function AppProvider({ children }) {
     return mappedRemark;
   };
 
-  const createUser = async ({ name, contact, email, password, role, idCardFile }) => {
+  const uploadAdminResidentId = async (file, side) => {
+    if (!file || !session?.user) return null;
+
+    const ext = file.name.split('.').pop()?.toLowerCase() || 'jpg';
+    const safeExt = ['jpg', 'jpeg', 'png', 'webp'].includes(ext) ? ext : 'jpg';
+    const fileName = `${session.user.id}/admin-created-${side}-${Date.now()}_${Math.random().toString(36).substring(2, 7)}.${safeExt}`;
+
+    const { data: uploadData, error: uploadError } = await supabase.storage
+      .from('resident-ids')
+      .upload(fileName, file, { upsert: true });
+
+    if (uploadError) {
+      throw new Error(`Failed to upload ${side} valid ID photo: ${uploadError.message}`);
+    }
+
+    const { data: publicUrlData } = supabase.storage
+      .from('resident-ids')
+      .getPublicUrl(uploadData.path);
+
+    return publicUrlData?.publicUrl || null;
+  };
+
+  const createUser = async ({
+    name,
+    contact,
+    email,
+    password,
+    role,
+    idCardFile,
+    idCardFrontFile,
+    idCardBackFile
+  }) => {
     const requestedRole = role || 'resident';
 
     if (requestedRole === 'admin' && session?.user?.role !== 'super_admin') {
       throw new Error('Only a super admin can create admin accounts.');
     }
 
-    let uploadedIdUrl = null;
-    if (idCardFile) {
-      const ext = idCardFile.name.split('.').pop()?.toLowerCase() || 'jpg';
-      const fileName = `admin_created/${Date.now()}_${Math.random().toString(36).substring(2, 7)}.${ext}`;
-
-      const { data: uploadData, error: uploadError } = await supabase.storage
-        .from('resident-ids')
-        .upload(fileName, idCardFile, { upsert: true });
-
-      if (uploadError) {
-        throw new Error(`Failed to upload valid ID photo: ${uploadError.message}`);
-      }
-
-      const { data: publicUrlData } = supabase.storage
-        .from('resident-ids')
-        .getPublicUrl(uploadData.path);
-
-      uploadedIdUrl = publicUrlData?.publicUrl || null;
-    }
+    const uploadedFrontUrl = await uploadAdminResidentId(idCardFrontFile || idCardFile, 'front');
+    const uploadedBackUrl = await uploadAdminResidentId(idCardBackFile, 'back');
 
     const { data, error: createError } = await supabase.functions.invoke('create-user', {
       body: {
@@ -668,7 +871,9 @@ export function AppProvider({ children }) {
         email,
         password,
         role: requestedRole,
-        id_card_url: uploadedIdUrl
+        id_card_url: uploadedFrontUrl,
+        id_card_front_url: uploadedFrontUrl,
+        id_card_back_url: uploadedBackUrl
       }
     });
 
@@ -801,6 +1006,8 @@ export function AppProvider({ children }) {
     reports,
     residents,
     notifications,
+    adminNotifications,
+    hotlines,
     reportLogs,
     reportRemarks,
     session,
@@ -813,6 +1020,8 @@ export function AppProvider({ children }) {
     resetPassword,
     updateCurrentProfile,
     updateReportDetails,
+    markAdminNotificationRead,
+    markAllAdminNotificationsRead,
     deleteReport,
     addReportRemark,
     createUser,
@@ -821,7 +1030,10 @@ export function AppProvider({ children }) {
     deleteUser,
     updateUserStatus,
     toggleResidentStatus,
-    sendNotification
+    sendNotification,
+    loadHotlines,
+    saveHotline,
+    deleteHotline
   };
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
