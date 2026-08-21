@@ -1,12 +1,20 @@
 import { useState } from 'react';
-import { useLocation } from 'react-router-dom';
-import { Camera, User, X } from 'lucide-react';
+import { useLocation, useNavigate } from 'react-router-dom';
+import { Bell, Camera, CheckCheck, User, X } from 'lucide-react';
 import { useApp } from '../context/useApp';
 
 export default function Header() {
   const location = useLocation();
-  const { session, updateCurrentProfile } = useApp();
+  const navigate = useNavigate();
+  const {
+    session,
+    updateCurrentProfile,
+    adminNotifications,
+    markAdminNotificationRead,
+    markAllAdminNotificationsRead
+  } = useApp();
   const [isProfileOpen, setIsProfileOpen] = useState(false);
+  const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
   const [fullname, setFullname] = useState('');
   const [phone, setPhone] = useState('');
   const [email, setEmail] = useState('');
@@ -28,6 +36,8 @@ export default function Header() {
         return 'Residents Management';
       case '/notifications':
         return 'Send Notification';
+      case '/hotlines':
+        return 'Hotline Management';
       default:
         return 'Drainage Monitoring System';
     }
@@ -47,6 +57,8 @@ export default function Header() {
         return 'Manage registered users and account status';
       case '/notifications':
         return 'Send notifications to residents';
+      case '/hotlines':
+        return 'Manage emergency and community hotline numbers';
       default:
         return '';
     }
@@ -87,39 +99,124 @@ export default function Header() {
     }
   };
 
+  const unreadCount = (adminNotifications || []).filter((item) => !item.isRead).length;
+  const visibleNotifications = (adminNotifications || []).slice(0, 8);
+
+  const handleOpenNotification = async (notification) => {
+    try {
+      if (!notification.isRead) {
+        await markAdminNotificationRead(notification.id);
+      }
+      setIsNotificationsOpen(false);
+      if (notification.reportId) {
+        navigate(`/reports?focus=${notification.reportId}&status=Pending`);
+      }
+    } catch (error) {
+      alert(error.message || 'Unable to open notification.');
+    }
+  };
+
+  const handleMarkAllRead = async () => {
+    try {
+      await markAllAdminNotificationsRead();
+    } catch (error) {
+      alert(error.message || 'Unable to mark notifications read.');
+    }
+  };
+
   return (
     <header className="app-header">
       <div className="header-title-group">
         <h2 className="header-title">{getTitle(location.pathname)}</h2>
         <p className="header-subtitle">{getSubtitle(location.pathname)}</p>
       </div>
-      <div
-        className="header-user"
-        onClick={openProfile}
-        role="button"
-        tabIndex={0}
-        title="Edit Profile"
-        onKeyDown={(event) => {
-          if (event.key === 'Enter' || event.key === ' ') {
-            event.preventDefault();
-            openProfile();
-          }
-        }}
-      >
-        <div className="header-avatar">
-          {session?.user?.avatarUrl ? (
-            <img src={session.user.avatarUrl} alt="" />
-          ) : (
-            <User size={26} />
+      <div className="header-actions">
+        <div className="admin-notification-wrap">
+          <button
+            type="button"
+            className={`admin-notification-btn ${unreadCount > 0 ? 'has-unread' : ''}`}
+            onClick={() => setIsNotificationsOpen((current) => !current)}
+            title="New report notifications"
+            aria-label="New report notifications"
+          >
+            <Bell size={21} />
+            {unreadCount > 0 && (
+              <span className="admin-notification-badge">
+                {unreadCount > 99 ? '99+' : unreadCount}
+              </span>
+            )}
+          </button>
+
+          {isNotificationsOpen && (
+            <div className="admin-notification-menu">
+              <div className="admin-notification-menu-header">
+                <div>
+                  <h3>New Reports</h3>
+                  <p>{unreadCount} unread notification{unreadCount === 1 ? '' : 's'}</p>
+                </div>
+                {unreadCount > 0 && (
+                  <button type="button" onClick={handleMarkAllRead}>
+                    <CheckCheck size={15} />
+                    <span>Read all</span>
+                  </button>
+                )}
+              </div>
+
+              <div className="admin-notification-list">
+                {visibleNotifications.length > 0 ? (
+                  visibleNotifications.map((notification) => (
+                    <button
+                      type="button"
+                      key={notification.id}
+                      className={`admin-notification-item ${notification.isRead ? 'read' : 'unread'}`}
+                      onClick={() => handleOpenNotification(notification)}
+                    >
+                      <span className="admin-notification-dot" />
+                      <span className="admin-notification-body">
+                        <strong>{notification.title}</strong>
+                        <span>{notification.message}</span>
+                        <small>{notification.createdAtLabel}</small>
+                      </span>
+                    </button>
+                  ))
+                ) : (
+                  <div className="admin-notification-empty">
+                    No new report notifications.
+                  </div>
+                )}
+              </div>
+            </div>
           )}
         </div>
-        <div className="header-user-info">
-          <span className="header-user-name">
-            {session?.user?.fullname || session?.user?.email || 'Admin'}
-          </span>
-          <span className="header-user-role">
-            {session?.user?.role === 'super_admin' ? 'Super Admin' : 'Administrator'}
-          </span>
+
+        <div
+          className="header-user"
+          onClick={openProfile}
+          role="button"
+          tabIndex={0}
+          title="Edit Profile"
+          onKeyDown={(event) => {
+            if (event.key === 'Enter' || event.key === ' ') {
+              event.preventDefault();
+              openProfile();
+            }
+          }}
+        >
+          <div className="header-avatar">
+            {session?.user?.avatarUrl ? (
+              <img src={session.user.avatarUrl} alt="" />
+            ) : (
+              <User size={26} />
+            )}
+          </div>
+          <div className="header-user-info">
+            <span className="header-user-name">
+              {session?.user?.fullname || session?.user?.email || 'Admin'}
+            </span>
+            <span className="header-user-role">
+              {session?.user?.role === 'super_admin' ? 'Super Admin' : 'Administrator'}
+            </span>
+          </div>
         </div>
       </div>
 
