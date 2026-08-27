@@ -8,15 +8,24 @@ import drainageLogo from '../assets/drainage_clean.png';
 export default function Sidebar() {
   const location = useLocation();
   const navigate = useNavigate();
-  const { signOut } = useApp();
+  const { signOut, adminNotifications, residents } = useApp();
   const [showLogoutModal, setShowLogoutModal] = useState(false);
+
+  const unreadReportsCount = (adminNotifications || []).filter((item) => !item.isRead).length;
+  const unreadResidentNotifs = (adminNotifications || []).filter(
+    (item) => !item.isRead && item.type === 'new_resident'
+  ).length;
+  const pendingResidentsCount = Math.max(
+    (residents || []).filter((u) => u.status === 'Pending').length,
+    unreadResidentNotifs
+  );
 
   const menuItems = [
     { name: 'Dashboard', path: '/dashboard', icon: Home },
-    { name: 'Reports', path: '/reports', icon: FileText },
+    { name: 'Reports', path: '/reports', icon: FileText, badge: unreadReportsCount },
     { name: 'Map', path: '/map', icon: MapPin },
     { name: 'Report Archive', path: '/archive', icon: History },
-    { name: 'Residents', path: '/residents', icon: Users },
+    { name: 'Residents', path: '/residents', icon: Users, badge: pendingResidentsCount },
     { name: 'Notification', path: '/notifications', icon: Bell },
     { name: 'Hotlines', path: '/hotlines', icon: PhoneCall },
   ];
@@ -45,6 +54,7 @@ export default function Sidebar() {
           {menuItems.map((item) => {
             const Icon = item.icon;
             const isActive = location.pathname === item.path;
+            const hasBadge = typeof item.badge === 'number' && item.badge > 0;
             return (
               <Link
                 key={item.path}
@@ -53,6 +63,11 @@ export default function Sidebar() {
               >
                 <Icon size={20} />
                 <span>{item.name}</span>
+                {hasBadge && (
+                  <span className="sidebar-badge" aria-label={`${item.badge} unread items`}>
+                    {item.badge > 99 ? '99+' : item.badge}
+                  </span>
+                )}
               </Link>
             );
           })}
