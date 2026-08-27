@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Edit, Plus, Search, Trash2, X } from 'lucide-react';
+import { /* Edit, Plus, Search, Trash2, */ X } from 'lucide-react';
 import { useApp } from '../context/useApp';
 import '../css/hotlines.css';
 
@@ -14,8 +14,8 @@ const EMPTY_FORM = {
 };
 
 export default function Hotlines() {
-  const { hotlines, loading, error, saveHotline, deleteHotline } = useApp();
-  const [searchQuery, setSearchQuery] = useState('');
+  const { hotlines, loading, error, saveHotline /*, deleteHotline */ } = useApp();
+  const [searchQuery /*, setSearchQuery */] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [form, setForm] = useState(EMPTY_FORM);
   const [isSaving, setIsSaving] = useState(false);
@@ -33,11 +33,14 @@ export default function Hotlines() {
     });
   }, [hotlines, searchQuery]);
 
+  /*
   const openCreateModal = () => {
     setForm(EMPTY_FORM);
     setIsModalOpen(true);
   };
+  */
 
+  /*
   const openEditModal = (hotline) => {
     setForm({
       id: hotline.id,
@@ -50,6 +53,7 @@ export default function Hotlines() {
     });
     setIsModalOpen(true);
   };
+  */
 
   const closeModal = () => {
     if (isSaving) return;
@@ -71,6 +75,7 @@ export default function Hotlines() {
     }
   };
 
+  /*
   const handleDelete = async (hotline) => {
     const shouldDelete = window.confirm(
       `Delete ${hotline.name}? Mobile residents will be notified that hotline information changed.`
@@ -83,6 +88,7 @@ export default function Hotlines() {
       alert(deleteError.message || 'Unable to delete hotline.');
     }
   };
+  */
 
   return (
     <div>
@@ -94,6 +100,7 @@ export default function Hotlines() {
         <div className="card hotline-error-card">{error}</div>
       )}
 
+      {/*
       <div className="hotline-toolbar">
         <div className="search-input-wrapper">
           <Search className="search-icon" size={18} />
@@ -116,6 +123,7 @@ export default function Hotlines() {
           <span>Add Hotline</span>
         </button>
       </div>
+      */}
 
       <div className="card" style={{ padding: '8px 24px 24px' }}>
         <div className="table-container">
@@ -124,10 +132,10 @@ export default function Hotlines() {
               <tr>
                 <th>Name</th>
                 <th>Phone Number</th>
-                <th>Category</th>
-                <th>Status</th>
-                <th>Sort</th>
-                <th style={{ textAlign: 'right' }}>Actions</th>
+                {/* <th>Category</th> */}
+                {/* <th>Status</th> */}
+                {/* <th>Sort</th> */}
+                {/* <th style={{ textAlign: 'right' }}>Actions</th> */}
               </tr>
             </thead>
             <tbody>
@@ -141,14 +149,14 @@ export default function Hotlines() {
                       </div>
                     </td>
                     <td className="hotline-phone-cell">{hotline.phoneNumber}</td>
-                    <td>{hotline.category || '-'}</td>
-                    <td>
+                    {/* <td>{hotline.category || '-'}</td> */}
+                    {/* <td>
                       <span className={`hotline-status ${hotline.isActive ? 'active' : 'inactive'}`}>
                         {hotline.isActive ? 'Active' : 'Inactive'}
                       </span>
-                    </td>
-                    <td>{hotline.sortOrder}</td>
-                    <td style={{ textAlign: 'right' }}>
+                    </td> */}
+                    {/* <td>{hotline.sortOrder}</td> */}
+                    {/* <td style={{ textAlign: 'right' }}>
                       <div className="hotline-actions">
                         <button
                           type="button"
@@ -167,12 +175,12 @@ export default function Hotlines() {
                           <Trash2 size={16} />
                         </button>
                       </div>
-                    </td>
+                    </td> */}
                   </tr>
                 ))
               ) : (
                 <tr>
-                  <td colSpan="6" className="hotline-empty-cell">
+                  <td colSpan="2" className="hotline-empty-cell">
                     No hotlines found.
                   </td>
                 </tr>
