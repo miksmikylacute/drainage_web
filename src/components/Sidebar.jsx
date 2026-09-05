@@ -3,29 +3,20 @@ import { createPortal } from 'react-dom';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Home, FileText, MapPin, History, Users, Bell, PhoneCall, LogOut } from 'lucide-react';
 import { useApp } from '../context/useApp';
-import drainageLogo from '../assets/drainage_clean.png';
+import drainageLogo from '../assets/drain_alert_logo_new.png';
 
 export default function Sidebar() {
   const location = useLocation();
   const navigate = useNavigate();
-  const { signOut, adminNotifications, residents } = useApp();
+  const { signOut } = useApp();
   const [showLogoutModal, setShowLogoutModal] = useState(false);
-
-  const unreadReportsCount = (adminNotifications || []).filter((item) => !item.isRead).length;
-  const unreadResidentNotifs = (adminNotifications || []).filter(
-    (item) => !item.isRead && item.type === 'new_resident'
-  ).length;
-  const pendingResidentsCount = Math.max(
-    (residents || []).filter((u) => u.status === 'Pending').length,
-    unreadResidentNotifs
-  );
 
   const menuItems = [
     { name: 'Dashboard', path: '/dashboard', icon: Home },
-    { name: 'Reports', path: '/reports', icon: FileText, badge: unreadReportsCount },
+    { name: 'Reports', path: '/reports', icon: FileText },
     { name: 'Map', path: '/map', icon: MapPin },
     { name: 'Report Archive', path: '/archive', icon: History },
-    { name: 'Residents', path: '/residents', icon: Users, badge: pendingResidentsCount },
+    { name: 'Residents', path: '/residents', icon: Users },
     { name: 'Notification', path: '/notifications', icon: Bell },
     { name: 'Hotlines', path: '/hotlines', icon: PhoneCall },
   ];
@@ -40,11 +31,11 @@ export default function Sidebar() {
       <div className="sidebar-brand">
         <div className="sidebar-brand-content-wrapper">
           <div className="sidebar-brand-logo-circle">
-            <img src={drainageLogo} alt="Report Drainage" className="sidebar-brand-logo-img" />
+            <img src={drainageLogo} alt="DrainAlert" className="sidebar-brand-logo-img" />
           </div>
           <div className="sidebar-brand-text">
-            <span className="sidebar-brand-title">Report Drainage</span>
-            <span className="sidebar-brand-subtitle">Monitoring and Reporting System</span>
+            <span className="sidebar-brand-title">DrainAlert</span>
+            <span className="sidebar-brand-subtitle">Drainage Reports Monitoring</span>
           </div>
         </div>
       </div>
@@ -54,7 +45,6 @@ export default function Sidebar() {
           {menuItems.map((item) => {
             const Icon = item.icon;
             const isActive = location.pathname === item.path;
-            const hasBadge = typeof item.badge === 'number' && item.badge > 0;
             return (
               <Link
                 key={item.path}
@@ -63,11 +53,6 @@ export default function Sidebar() {
               >
                 <Icon size={20} />
                 <span>{item.name}</span>
-                {hasBadge && (
-                  <span className="sidebar-badge" aria-label={`${item.badge} unread items`}>
-                    {item.badge > 99 ? '99+' : item.badge}
-                  </span>
-                )}
               </Link>
             );
           })}
