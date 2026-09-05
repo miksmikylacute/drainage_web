@@ -2,7 +2,7 @@ import { useEffect, useState, useMemo } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { useApp } from '../context/useApp';
 import {
-  Search, X, Calendar, Filter, Eye, ChevronLeft, ChevronRight, Trash2, Info, ChevronDown
+  Search, X, Calendar, Filter, Eye, ChevronLeft, ChevronRight, Trash2, Info, ChevronDown, Download
 } from 'lucide-react';
 import cloggedDrainImg from '../assets/clogged_drain.png';
 import { isReportVisibleOnMap } from '../lib/reportMapMarkers';
@@ -30,6 +30,12 @@ function formatDate(value) {
     hour: 'numeric',
     minute: '2-digit'
   }).format(new Date(value));
+}
+
+function escapeCsvCell(cell) {
+  if (cell === null || cell === undefined) return '""';
+  const str = String(cell).replace(/"/g, '""');
+  return `"${str}"`;
 }
 
 export default function ReportArchive() {
@@ -163,6 +169,59 @@ export default function ReportArchive() {
     setStatusFilter('All Status');
     setSortBy('Newest First');
     resetToFirstPage();
+  };
+
+  const handleExportExcel = () => {
+    if (!filteredReports || filteredReports.length === 0) {
+      alert('No reports match the selected filters to export.');
+      return;
+    }
+
+    const headers = [
+      'Report ID',
+      'Title / Issue',
+      'Description',
+      'Status',
+      'Priority',
+      'Location',
+      'Coordinates',
+      'Submitted By',
+      'Contact Number',
+      'Date Submitted',
+      'Last Updated',
+      'Remarks',
+    ];
+
+    const rows = filteredReports.map((report) => [
+      report.displayId || report.id || '',
+      report.issue || '',
+      report.description || '',
+      report.status || '',
+      report.priority || 'N/A',
+      report.location || '',
+      formatReportCoordinates(report),
+      report.submittedBy || 'Anonymous',
+      report.contactNo || 'N/A',
+      report.dateSubmitted || '',
+      report.updatedAt ? formatDate(report.updatedAt) : (report.dateSubmitted || ''),
+      report.remarks || '',
+    ]);
+
+    const csvContent = [
+      headers.map(escapeCsvCell).join(','),
+      ...rows.map((row) => row.map(escapeCsvCell).join(',')),
+    ].join('\r\n');
+
+    const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    const timestamp = new Date().toISOString().slice(0, 10);
+    link.setAttribute('href', url);
+    link.setAttribute('download', `drainage_archive_reports_${timestamp}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
   };
 
   const handleOpenEdit = (report) => {
@@ -315,6 +374,18 @@ export default function ReportArchive() {
           <button className="archive-btn-clear" onClick={handleClearFilters}>
             <Filter size={16} />
             <span>Clear Filters</span>
+          </button>
+
+          {/* Export to Excel */}
+          <button
+            type="button"
+            className="archive-btn-export"
+            onClick={handleExportExcel}
+            title="Export filtered reports to Excel"
+            disabled={filteredReports.length === 0}
+          >
+            <Download size={16} />
+            <span>Export to Excel</span>
           </button>
         </div>
       </div>

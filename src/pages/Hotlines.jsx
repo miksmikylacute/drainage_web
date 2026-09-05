@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { /* Edit, Plus, Search, Trash2, */ X } from 'lucide-react';
+import { Edit, Plus, Search, Trash2, X } from 'lucide-react';
 import { useApp } from '../context/useApp';
 import '../css/hotlines.css';
 
@@ -13,32 +13,43 @@ const EMPTY_FORM = {
   isActive: true
 };
 
-const NEW_HOTLINES = [
-  { id: '1', name: 'PNP', phoneNumbers: ['0910 865 1687', '0998 598 5761'], category: 'Emergency', description: '' },
-  { id: '2', name: 'MDRRMO', phoneNumbers: ['0939 916 6123', '(042) 7170 090'], category: 'Disaster', description: '' },
-  { id: '3', name: 'BFP', phoneNumbers: ['0969 438 8874', '(042) 7840 950'], category: 'Fire', description: '' },
-  { id: '4', name: 'COAST GUARD', phoneNumbers: ['0948 344 4400'], category: 'Rescue', description: '' },
-  { id: '5', name: 'HOSPITAL', phoneNumbers: ['0981 598 3404', '(042) 7840 216'], category: 'Medical', description: '' },
-];
-
 export default function Hotlines() {
-  const { loading, error } = useApp();
-  const [searchQuery] = useState('');
+  const { hotlines, saveHotline, deleteHotline, loading, error } = useApp();
+  const [searchQuery, setSearchQuery] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [form, setForm] = useState(EMPTY_FORM);
   const [isSaving, setIsSaving] = useState(false);
 
   const filteredHotlines = useMemo(() => {
     const query = searchQuery.trim().toLowerCase();
-    return NEW_HOTLINES.filter((hotline) => {
+    return (hotlines || []).filter((hotline) => {
       if (!query) return true;
-      const nums = (hotline.phoneNumbers || []).join(' ');
+      const num = hotline.phoneNumber || '';
       return (
         hotline.name.toLowerCase().includes(query) ||
-        nums.toLowerCase().includes(query)
+        num.toLowerCase().includes(query) ||
+        (hotline.category || '').toLowerCase().includes(query)
       );
     });
-  }, [searchQuery]);
+  }, [hotlines, searchQuery]);
+
+  const openCreateModal = () => {
+    setForm(EMPTY_FORM);
+    setIsModalOpen(true);
+  };
+
+  const openEditModal = (hotline) => {
+    setForm({
+      id: hotline.id,
+      name: hotline.name || '',
+      phoneNumber: hotline.phoneNumber || '',
+      category: hotline.category || '',
+      description: hotline.description || '',
+      sortOrder: hotline.sortOrder || 0,
+      isActive: hotline.isActive !== false
+    });
+    setIsModalOpen(true);
+  };
 
   const closeModal = () => {
     if (isSaving) return;
@@ -48,7 +59,29 @@ export default function Hotlines() {
 
   const handleSubmit = async (event) => {
     event.preventDefault();
-    closeModal();
+    setIsSaving(true);
+
+    try {
+      await saveHotline(form);
+      closeModal();
+    } catch (saveError) {
+      alert(saveError.message || 'Unable to save hotline.');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleDelete = async (hotline) => {
+    const shouldDelete = window.confirm(
+      `Delete ${hotline.name}? Mobile residents will be notified that hotline information changed.`
+    );
+    if (!shouldDelete) return;
+
+    try {
+      await deleteHotline(hotline.id);
+    } catch (deleteError) {
+      alert(deleteError.message || 'Unable to delete hotline.');
+    }
   };
 
   return (
@@ -61,6 +94,29 @@ export default function Hotlines() {
         <div className="card hotline-error-card">{error}</div>
       )}
 
+      <div className="hotline-toolbar">
+        <div className="search-input-wrapper">
+          <Search className="search-icon" size={18} />
+          <input
+            type="text"
+            placeholder="Search hotlines..."
+            className="search-input"
+            value={searchQuery}
+            onChange={(event) => setSearchQuery(event.target.value)}
+          />
+          {searchQuery && (
+            <span className="clear-search-icon" onClick={() => setSearchQuery('')}>
+              <X size={16} />
+            </span>
+          )}
+        </div>
+
+        <button type="button" className="btn-primary hotline-add-btn" onClick={openCreateModal}>
+          <Plus size={18} />
+          <span>Add Hotline</span>
+        </button>
+      </div>
+
       <div className="card" style={{ padding: '8px 24px 24px' }}>
         <div className="table-container">
           <table className="custom-table hotline-table">
@@ -68,6 +124,10 @@ export default function Hotlines() {
               <tr>
                 <th>Name</th>
                 <th>Phone Number</th>
+                <th>Category</th>
+                <th>Status</th>
+                <th>Sort</th>
+                <th style={{ textAlign: 'right' }}>Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -80,20 +140,39 @@ export default function Hotlines() {
                         {hotline.description && <span>{hotline.description}</span>}
                       </div>
                     </td>
-                    <td className="hotline-phone-cell">
-                      {Array.isArray(hotline.phoneNumbers) ? (
-                        hotline.phoneNumbers.map((num, idx) => (
-                          <div key={idx}>{num}</div>
-                        ))
-                      ) : (
-                        hotline.phoneNumber
-                      )}
+                    <td className="hotline-phone-cell">{hotline.phoneNumber}</td>
+                    <td>{hotline.category || '-'}</td>
+                    <td>
+                      <span className={`hotline-status ${hotline.isActive ? 'active' : 'inactive'}`}>
+                        {hotline.isActive ? 'Active' : 'Inactive'}
+                      </span>
+                    </td>
+                    <td>{hotline.sortOrder}</td>
+                    <td style={{ textAlign: 'right' }}>
+                      <div className="hotline-actions">
+                        <button
+                          type="button"
+                          className="hotline-icon-btn"
+                          onClick={() => openEditModal(hotline)}
+                          title="Edit hotline"
+                        >
+                          <Edit size={16} />
+                        </button>
+                        <button
+                          type="button"
+                          className="hotline-icon-btn danger"
+                          onClick={() => handleDelete(hotline)}
+                          title="Delete hotline"
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))
               ) : (
                 <tr>
-                  <td colSpan="2" className="hotline-empty-cell">
+                  <td colSpan="6" className="hotline-empty-cell">
                     No hotlines found.
                   </td>
                 </tr>

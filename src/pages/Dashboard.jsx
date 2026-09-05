@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useApp } from '../context/useApp';
-import { ChevronRight, CircleDot, ShieldCheck, UserCog, Users } from 'lucide-react';
+import { ChevronRight, CircleDot, ShieldCheck, UserCog, Users, WifiOff } from 'lucide-react';
 import {
   buildReportMarkerSvg,
   DEFAULT_MAP_ZOOM,
@@ -279,6 +279,18 @@ function DashboardMiniMap({ reports, reportLogs }) {
   const markersRef = useRef([]);
   const [mapReady, setMapReady] = useState(false);
   const [archiveNow, setArchiveNow] = useState(() => new Date());
+  const [isOffline, setIsOffline] = useState(!navigator.onLine);
+
+  useEffect(() => {
+    const handleOnline = () => setIsOffline(false);
+    const handleOffline = () => setIsOffline(true);
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, []);
 
   useEffect(() => {
     const timer = window.setInterval(() => setArchiveNow(new Date()), 60 * 1000);
@@ -366,7 +378,37 @@ function DashboardMiniMap({ reports, reportLogs }) {
     syncMarkers();
   }, [reports, reportLogs, archiveNow, mapReady]);
 
-  return <div ref={mapRef} className="dashboard-mini-map" />;
+  return (
+    <div style={{ position: 'relative', width: '100%', height: '100%', minHeight: '180px' }}>
+      {isOffline && (
+        <div
+          style={{
+            position: 'absolute',
+            top: '10px',
+            left: '50%',
+            transform: 'translateX(-50%)',
+            zIndex: 1000,
+            backgroundColor: '#dc2626',
+            color: '#ffffff',
+            padding: '6px 12px',
+            borderRadius: '6px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '6px',
+            fontWeight: '600',
+            fontSize: '12px',
+            boxShadow: '0 4px 12px rgba(0,0,0,0.25)',
+            pointerEvents: 'none',
+            whiteSpace: 'nowrap',
+          }}
+        >
+          <WifiOff size={14} />
+          <span>No Internet Connection</span>
+        </div>
+      )}
+      <div ref={mapRef} className="dashboard-mini-map" />
+    </div>
+  );
 }
 
 export default function Dashboard() {

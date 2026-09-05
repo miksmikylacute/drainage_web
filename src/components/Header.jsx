@@ -247,11 +247,6 @@ export default function Header() {
               </div>
 
               <div className="form-group">
-                <label className="form-label">Phone</label>
-                <input className="form-input" value={phone} onChange={(e) => setPhone(e.target.value)} />
-              </div>
-
-              <div className="form-group">
                 <label className="form-label">Email</label>
                 <input
                   className="form-input"

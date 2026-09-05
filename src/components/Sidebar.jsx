@@ -8,15 +8,20 @@ import drainageLogo from '../assets/drain_alert_logo_new.png';
 export default function Sidebar() {
   const location = useLocation();
   const navigate = useNavigate();
-  const { signOut } = useApp();
+  const { signOut, adminNotifications, residents, session } = useApp();
   const [showLogoutModal, setShowLogoutModal] = useState(false);
+
+  const reportsUnreadCount = (adminNotifications || []).filter((item) => !item.isRead).length;
+  const isSuperAdmin = session?.user?.role === 'super_admin';
+  const visibleUsers = (residents || []).filter((user) => isSuperAdmin || user.role === 'resident');
+  const pendingResidentsCount = visibleUsers.filter((u) => u.status === 'Pending').length;
 
   const menuItems = [
     { name: 'Dashboard', path: '/dashboard', icon: Home },
-    { name: 'Reports', path: '/reports', icon: FileText },
+    { name: 'Reports', path: '/reports', icon: FileText, badge: reportsUnreadCount },
     { name: 'Map', path: '/map', icon: MapPin },
     { name: 'Report Archive', path: '/archive', icon: History },
-    { name: 'Residents', path: '/residents', icon: Users },
+    { name: 'Residents', path: '/residents', icon: Users, badge: pendingResidentsCount },
     { name: 'Notification', path: '/notifications', icon: Bell },
     { name: 'Hotlines', path: '/hotlines', icon: PhoneCall },
   ];
@@ -45,6 +50,7 @@ export default function Sidebar() {
           {menuItems.map((item) => {
             const Icon = item.icon;
             const isActive = location.pathname === item.path;
+            const hasBadge = typeof item.badge === 'number' && item.badge > 0;
             return (
               <Link
                 key={item.path}
@@ -53,6 +59,11 @@ export default function Sidebar() {
               >
                 <Icon size={20} />
                 <span>{item.name}</span>
+                {hasBadge && (
+                  <span className="sidebar-badge">
+                    {item.badge > 99 ? '99+' : item.badge}
+                  </span>
+                )}
               </Link>
             );
           })}

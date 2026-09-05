@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
+import { WifiOff } from 'lucide-react';
 import { useApp } from '../context/useApp';
 import {
   buildReportMarkerSvg,
@@ -21,10 +22,22 @@ export default function MapView() {
   const focusReportId = searchParams.get('focus');
   const { reports, reportLogs } = useApp();
   const [archiveNow, setArchiveNow] = useState(() => new Date());
+  const [isOffline, setIsOffline] = useState(!navigator.onLine);
   const mapRef = useRef(null);
   const leafletMapRef = useRef(null);
   const markersRef = useRef([]);
   const [mapReady, setMapReady] = useState(false);
+
+  useEffect(() => {
+    const handleOnline = () => setIsOffline(false);
+    const handleOffline = () => setIsOffline(true);
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, []);
 
   useEffect(() => {
     const timer = window.setInterval(() => setArchiveNow(new Date()), 60 * 1000);
@@ -123,7 +136,7 @@ export default function MapView() {
           </p>
           <div class="map-popup-coords-box">
             <span class="map-popup-coords-label">Coords:</span>
-            <span class="map-popup-coords-val">${formatReportCoordinates(report.latitude, report.longitude)}</span>
+            <span class="map-popup-coords-val">${formatReportCoordinates(report)}</span>
           </div>
           <div class="map-popup-reporter">
             <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
@@ -193,7 +206,32 @@ export default function MapView() {
         </div>
       </div>
 
-      <div className="map-leaflet-card">
+      <div className="map-leaflet-card" style={{ position: 'relative' }}>
+        {isOffline && (
+          <div
+            style={{
+              position: 'absolute',
+              top: '16px',
+              left: '50%',
+              transform: 'translateX(-50%)',
+              zIndex: 1000,
+              backgroundColor: '#dc2626',
+              color: '#ffffff',
+              padding: '8px 18px',
+              borderRadius: '8px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              fontWeight: '600',
+              fontSize: '13px',
+              boxShadow: '0 4px 12px rgba(0,0,0,0.25)',
+              pointerEvents: 'none',
+            }}
+          >
+            <WifiOff size={16} />
+            <span>No Internet Connection: OpenStreetMap tiles cannot be loaded.</span>
+          </div>
+        )}
         <div ref={mapRef} className="map-leaflet-container" />
       </div>
     </div>
