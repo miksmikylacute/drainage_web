@@ -124,9 +124,6 @@ export default function Hotlines() {
               <tr>
                 <th>Name</th>
                 <th>Phone Number</th>
-                <th>Category</th>
-                <th>Status</th>
-                <th>Sort</th>
                 <th style={{ textAlign: 'right' }}>Actions</th>
               </tr>
             </thead>
@@ -137,17 +134,9 @@ export default function Hotlines() {
                     <td>
                       <div className="hotline-name-cell">
                         <strong>{hotline.name}</strong>
-                        {hotline.description && <span>{hotline.description}</span>}
                       </div>
                     </td>
                     <td className="hotline-phone-cell">{hotline.phoneNumber}</td>
-                    <td>{hotline.category || '-'}</td>
-                    <td>
-                      <span className={`hotline-status ${hotline.isActive ? 'active' : 'inactive'}`}>
-                        {hotline.isActive ? 'Active' : 'Inactive'}
-                      </span>
-                    </td>
-                    <td>{hotline.sortOrder}</td>
                     <td style={{ textAlign: 'right' }}>
                       <div className="hotline-actions">
                         <button
@@ -172,7 +161,7 @@ export default function Hotlines() {
                 ))
               ) : (
                 <tr>
-                  <td colSpan="6" className="hotline-empty-cell">
+                  <td colSpan="3" className="hotline-empty-cell">
                     No hotlines found.
                   </td>
                 </tr>
@@ -213,47 +202,6 @@ export default function Hotlines() {
                   placeholder="e.g. 09123456789"
                   required
                 />
-              </div>
-
-              <div className="form-group">
-                <label className="form-label">Category</label>
-                <input
-                  className="form-input"
-                  value={form.category}
-                  onChange={(event) => setForm((current) => ({ ...current, category: event.target.value }))}
-                  placeholder="e.g. Emergency, Health, Disaster"
-                />
-              </div>
-
-              <div className="form-group">
-                <label className="form-label">Description</label>
-                <textarea
-                  className="form-input hotline-textarea"
-                  value={form.description}
-                  onChange={(event) => setForm((current) => ({ ...current, description: event.target.value }))}
-                  placeholder="Short note shown to residents"
-                />
-              </div>
-
-              <div className="hotline-form-row">
-                <div className="form-group">
-                  <label className="form-label">Sort Order</label>
-                  <input
-                    className="form-input"
-                    type="number"
-                    value={form.sortOrder}
-                    onChange={(event) => setForm((current) => ({ ...current, sortOrder: event.target.value }))}
-                  />
-                </div>
-
-                <label className="hotline-toggle">
-                  <input
-                    type="checkbox"
-                    checked={form.isActive}
-                    onChange={(event) => setForm((current) => ({ ...current, isActive: event.target.checked }))}
-                  />
-                  <span>Active hotline</span>
-                </label>
               </div>
 
               <div className="modal-actions">
