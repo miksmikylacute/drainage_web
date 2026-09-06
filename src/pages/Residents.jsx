@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { useApp } from '../context/useApp';
 import { ChevronLeft, ChevronRight, FileText, Search, Trash2, Upload, UserPlus, X } from 'lucide-react';
 import '../css/residents.css';
@@ -16,6 +17,9 @@ export default function Residents() {
   } = useApp();
   const isSuperAdmin = session?.user?.role === 'super_admin';
   
+  const [searchParams, setSearchParams] = useSearchParams();
+  const focusUserId = searchParams.get('focus') || '';
+
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('All');
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -35,6 +39,24 @@ export default function Residents() {
 
   const [selectedUser, setSelectedUser] = useState(null);
   const [viewingImageUrl, setViewingImageUrl] = useState(null);
+
+  const focusedUser = focusUserId ? residents.find((u) => u.id === focusUserId) : null;
+  const activeInspectionUser = selectedUser || focusedUser;
+
+  const closeInspectionModal = () => {
+    setSelectedUser(null);
+    if (focusUserId) {
+      const nextParams = new URLSearchParams(searchParams);
+      nextParams.delete('focus');
+      setSearchParams(nextParams, { replace: true });
+    }
+  };
+
+  useEffect(() => {
+    if (!focusUserId) return;
+    const targetRow = document.getElementById(`user-row-${focusUserId}`);
+    targetRow?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }, [focusUserId, residents.length]);
 
   const resetForm = () => {
     setRole('resident');
@@ -106,7 +128,7 @@ export default function Residents() {
 
     try {
       await deleteUser(user.id);
-      setSelectedUser((current) => (current?.id === user.id ? null : current));
+      closeInspectionModal();
     } catch (deleteError) {
       alert(deleteError.message || 'Unable to delete user.');
     }
@@ -139,8 +161,27 @@ export default function Residents() {
     return true;
   });
 
+  const clearFocusParam = () => {
+    if (focusUserId) {
+      const nextParams = new URLSearchParams(searchParams);
+      nextParams.delete('focus');
+      setSearchParams(nextParams, { replace: true });
+    }
+  };
+
+  const updatePage = (newPage) => {
+    clearFocusParam();
+    setCurrentPage(newPage);
+  };
+
+  const focusedUserIndex = focusUserId
+    ? filteredUsers.findIndex((user) => user.id === focusUserId)
+    : -1;
+  const focusedUserPage = focusedUserIndex >= 0
+    ? Math.floor(focusedUserIndex / ITEMS_PER_PAGE) + 1
+    : null;
   const totalPages = Math.max(1, Math.ceil(filteredUsers.length / ITEMS_PER_PAGE));
-  const safeCurrentPage = Math.min(currentPage, totalPages);
+  const safeCurrentPage = Math.min(focusedUserPage || currentPage, totalPages);
   const startIndex = (safeCurrentPage - 1) * ITEMS_PER_PAGE;
   const displayedUsers = filteredUsers.slice(startIndex, startIndex + ITEMS_PER_PAGE);
   const firstPageButton = Math.max(1, Math.min(safeCurrentPage - 2, totalPages - 4));
@@ -162,6 +203,7 @@ export default function Residents() {
             type="button"
             className={`resident-tab ${statusFilter === 'All' ? 'active' : ''}`}
             onClick={() => {
+              clearFocusParam();
               setStatusFilter('All');
               setCurrentPage(1);
             }}
@@ -173,6 +215,7 @@ export default function Residents() {
             type="button"
             className={`resident-tab pending-tab ${pendingCount > 0 ? 'has-pending' : ''} ${statusFilter === 'Pending' ? 'active' : ''}`}
             onClick={() => {
+              clearFocusParam();
               setStatusFilter('Pending');
               setCurrentPage(1);
             }}
@@ -184,6 +227,7 @@ export default function Residents() {
             type="button"
             className={`resident-tab ${statusFilter === 'Active' ? 'active' : ''}`}
             onClick={() => {
+              clearFocusParam();
               setStatusFilter('Active');
               setCurrentPage(1);
             }}
@@ -195,6 +239,7 @@ export default function Residents() {
             type="button"
             className={`resident-tab ${statusFilter === 'Disabled' ? 'active' : ''}`}
             onClick={() => {
+              clearFocusParam();
               setStatusFilter('Disabled');
               setCurrentPage(1);
             }}
@@ -214,12 +259,14 @@ export default function Residents() {
               className="search-input"
               value={searchQuery}
               onChange={(e) => {
+                clearFocusParam();
                 setSearchQuery(e.target.value);
                 setCurrentPage(1);
               }}
             />
             {searchQuery && (
               <span className="clear-search-icon" onClick={() => {
+                clearFocusParam();
                 setSearchQuery('');
                 setCurrentPage(1);
               }}>
@@ -261,7 +308,11 @@ export default function Residents() {
             <tbody>
               {displayedUsers.length > 0 ? (
                 displayedUsers.map((user) => (
-                  <tr key={user.id}>
+                  <tr
+                    key={user.id}
+                    id={`user-row-${user.id}`}
+                    className={focusUserId === user.id ? 'user-row-highlight' : ''}
+                  >
                     <td>
                       <div 
                         className="user-cell" 
@@ -386,7 +437,7 @@ export default function Residents() {
                 type="button"
                 className="residents-page-btn"
                 disabled={safeCurrentPage === 1}
-                onClick={() => setCurrentPage((page) => Math.max(1, page - 1))}
+                onClick={() => updatePage(Math.max(1, safeCurrentPage - 1))}
                 aria-label="Previous page"
               >
                 <ChevronLeft size={16} />
@@ -396,7 +447,7 @@ export default function Residents() {
                   key={page}
                   type="button"
                   className={`residents-page-btn ${safeCurrentPage === page ? 'active' : ''}`}
-                  onClick={() => setCurrentPage(page)}
+                  onClick={() => updatePage(page)}
                 >
                   {page}
                 </button>
@@ -405,7 +456,7 @@ export default function Residents() {
                 type="button"
                 className="residents-page-btn"
                 disabled={safeCurrentPage === totalPages}
-                onClick={() => setCurrentPage((page) => Math.min(totalPages, page + 1))}
+                onClick={() => updatePage(Math.min(totalPages, safeCurrentPage + 1))}
                 aria-label="Next page"
               >
                 <ChevronRight size={16} />
@@ -573,61 +624,61 @@ export default function Residents() {
         </div>
       )}
 
-      {selectedUser && (
-        <div className="modal-overlay" onClick={() => setSelectedUser(null)}>
+      {activeInspectionUser && (
+        <div className="modal-overlay" onClick={closeInspectionModal}>
           <div className="modal-content user-profile-modal" onClick={(e) => e.stopPropagation()} style={{ textAlign: 'center' }}>
             <div className="modal-header">
               <h2>User Profile</h2>
-              <button className="modal-close" onClick={() => setSelectedUser(null)}>
+              <button className="modal-close" onClick={closeInspectionModal}>
                 <X size={20} />
               </button>
             </div>
 
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '16px', margin: '20px 0 10px' }}>
               <div className="admin-avatar-preview" style={{ width: '100px', height: '100px', fontSize: '32px', fontWeight: '800' }}>
-                {selectedUser.avatarUrl ? (
+                {activeInspectionUser.avatarUrl ? (
                   <div 
-                    onClick={() => setViewingImageUrl(selectedUser.avatarUrl)} 
+                    onClick={() => setViewingImageUrl(activeInspectionUser.avatarUrl)} 
                     style={{ cursor: 'pointer', display: 'block', width: '100%', height: '100%' }}
                   >
-                    <img src={selectedUser.avatarUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                    <img src={activeInspectionUser.avatarUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                   </div>
                 ) : (
-                  selectedUser.name.charAt(0)
+                  activeInspectionUser.name.charAt(0)
                 )}
               </div>
-              <h3 style={{ fontSize: '20px', fontWeight: '700', color: 'var(--text-dark)', margin: '0' }}>{selectedUser.name}</h3>
-              <span className={`role-badge ${selectedUser.role}`} style={{ alignSelf: 'center' }}>
-                {selectedUser.role === 'super_admin' ? 'Super Admin' : selectedUser.role}
+              <h3 style={{ fontSize: '20px', fontWeight: '700', color: 'var(--text-dark)', margin: '0' }}>{activeInspectionUser.name}</h3>
+              <span className={`role-badge ${activeInspectionUser.role}`} style={{ alignSelf: 'center' }}>
+                {activeInspectionUser.role === 'super_admin' ? 'Super Admin' : activeInspectionUser.role}
               </span>
             </div>
 
             <div style={{ textAlign: 'left', marginTop: '24px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
               <div style={{ borderBottom: '1px solid #f1f5f9', paddingBottom: '8px' }}>
                 <span style={{ fontSize: '12px', fontWeight: '600', color: 'var(--text-muted)', display: 'block', marginBottom: '2px' }}>Email Address</span>
-                <span style={{ fontSize: '15px', color: 'var(--text-dark)', fontWeight: '500' }}>{selectedUser.email}</span>
+                <span style={{ fontSize: '15px', color: 'var(--text-dark)', fontWeight: '500' }}>{activeInspectionUser.email}</span>
               </div>
               <div style={{ borderBottom: '1px solid #f1f5f9', paddingBottom: '8px' }}>
                 <span style={{ fontSize: '12px', fontWeight: '600', color: 'var(--text-muted)', display: 'block', marginBottom: '2px' }}>Contact Number</span>
-                <span style={{ fontSize: '15px', color: 'var(--text-dark)', fontWeight: '500' }}>{selectedUser.contact || '—'}</span>
+                <span style={{ fontSize: '15px', color: 'var(--text-dark)', fontWeight: '500' }}>{activeInspectionUser.contact || '—'}</span>
               </div>
               <div style={{ borderBottom: '1px solid #f1f5f9', paddingBottom: '8px' }}>
                 <span style={{ fontSize: '12px', fontWeight: '600', color: 'var(--text-muted)', display: 'block', marginBottom: '2px' }}>Account Status</span>
-                <span className={`status-toggle-btn ${selectedUser.status ? selectedUser.status.toLowerCase() : 'active'}`} style={{ padding: '0', cursor: 'default' }}>
-                  {selectedUser.status === 'Pending' ? 'Pending Verification' : selectedUser.status}
+                <span className={`status-toggle-btn ${activeInspectionUser.status ? activeInspectionUser.status.toLowerCase() : 'active'}`} style={{ padding: '0', cursor: 'default' }}>
+                  {activeInspectionUser.status === 'Pending' ? 'Pending Verification' : activeInspectionUser.status}
                 </span>
               </div>
               <div style={{ borderBottom: '1px solid #f1f5f9', paddingBottom: '8px' }}>
                 <span style={{ fontSize: '12px', fontWeight: '600', color: 'var(--text-muted)', display: 'block', marginBottom: '4px' }}>Submitted Valid ID Photos</span>
-                {selectedUser.idCardFrontUrl || selectedUser.idCardBackUrl || selectedUser.idCardUrl ? (
+                {activeInspectionUser.idCardFrontUrl || activeInspectionUser.idCardBackUrl || activeInspectionUser.idCardUrl ? (
                   <div className="id-photo-grid">
                     <div className="id-photo-card">
                       <span>Front ID</span>
-                      {selectedUser.idCardFrontUrl || selectedUser.idCardUrl ? (
+                      {activeInspectionUser.idCardFrontUrl || activeInspectionUser.idCardUrl ? (
                         <img
-                          src={selectedUser.idCardFrontUrl || selectedUser.idCardUrl}
+                          src={activeInspectionUser.idCardFrontUrl || activeInspectionUser.idCardUrl}
                           alt="Valid ID front"
-                          onClick={() => setViewingImageUrl(selectedUser.idCardFrontUrl || selectedUser.idCardUrl)}
+                          onClick={() => setViewingImageUrl(activeInspectionUser.idCardFrontUrl || activeInspectionUser.idCardUrl)}
                         />
                       ) : (
                         <div className="id-photo-missing">Missing</div>
@@ -635,11 +686,11 @@ export default function Residents() {
                     </div>
                     <div className="id-photo-card">
                       <span>Back ID</span>
-                      {selectedUser.idCardBackUrl ? (
+                      {activeInspectionUser.idCardBackUrl ? (
                         <img
-                          src={selectedUser.idCardBackUrl}
+                          src={activeInspectionUser.idCardBackUrl}
                           alt="Valid ID back"
-                          onClick={() => setViewingImageUrl(selectedUser.idCardBackUrl)}
+                          onClick={() => setViewingImageUrl(activeInspectionUser.idCardBackUrl)}
                         />
                       ) : (
                         <div className="id-photo-missing">Missing</div>
@@ -652,7 +703,7 @@ export default function Residents() {
               </div>
             </div>
 
-            {selectedUser.status === 'Pending' && (
+            {activeInspectionUser.status === 'Pending' && (
               <div style={{ display: 'flex', gap: '8px', marginTop: '20px' }}>
                 <button
                   type="button"
@@ -660,8 +711,8 @@ export default function Residents() {
                   style={{ flex: 1, backgroundColor: '#22C55E' }}
                   onClick={async () => {
                     try {
-                      await updateUserStatus(selectedUser.id, 'Active');
-                      setSelectedUser(null);
+                      await updateUserStatus(activeInspectionUser.id, 'Active');
+                      closeInspectionModal();
                     } catch (e) {
                       alert(e.message || 'Unable to approve user.');
                     }
@@ -675,8 +726,8 @@ export default function Residents() {
                   style={{ flex: 1, color: '#dc2626', borderColor: '#fecaca' }}
                   onClick={async () => {
                     try {
-                      await updateUserStatus(selectedUser.id, 'Disabled');
-                      setSelectedUser(null);
+                      await updateUserStatus(activeInspectionUser.id, 'Disabled');
+                      closeInspectionModal();
                     } catch (e) {
                       alert(e.message || 'Unable to reject user.');
                     }
@@ -688,17 +739,17 @@ export default function Residents() {
             )}
 
             <div className="modal-actions" style={{ marginTop: '32px' }}>
-              {isSuperAdmin && selectedUser.role !== 'super_admin' && (
+              {isSuperAdmin && activeInspectionUser.role !== 'super_admin' && (
                 <button
                   type="button"
                   className="btn-secondary"
-                  onClick={() => handleDeleteUser(selectedUser)}
+                  onClick={() => handleDeleteUser(activeInspectionUser)}
                   style={{ width: '100%', color: '#dc2626', borderColor: '#fecaca' }}
                 >
                   Delete Account
                 </button>
               )}
-              <button type="button" className="btn-secondary" onClick={() => setSelectedUser(null)} style={{ width: '100%' }}>
+              <button type="button" className="btn-secondary" onClick={closeInspectionModal} style={{ width: '100%' }}>
                 Close
               </button>
             </div>

@@ -534,7 +534,7 @@ export default function ReportArchive() {
       {currentEditingReport && (
         <div className="modal-overlay report-modal-overlay" onClick={() => setEditingReport(null)}>
           <div className="report-modal-content" onClick={(e) => e.stopPropagation()}>
-            
+
             <button className="back-link" onClick={() => setEditingReport(null)}>
               <ChevronLeft size={20} />
               <span>Back to Archive</span>
@@ -543,14 +543,14 @@ export default function ReportArchive() {
             <div className="report-modal-grid">
               <section className="report-detail-panel">
                 <div className="report-panel-title">Report Details</div>
-                <div className="report-detail-row">
+                { /*<div className="report-detail-row">
                   <span className="report-detail-label">Report ID</span>
                   <span className="report-detail-value">{currentEditingReport.displayId}</span>
-                </div>
+                </div> */ }
                 <div className="report-detail-row">
                   <span className="report-detail-label">Location</span>
                   {isReportVisibleOnMap(currentEditingReport) ? (
-                    <span 
+                    <span
                       className="report-detail-value location-link"
                       onClick={() => navigate(`/map?focus=${currentEditingReport.id}`)}
                     >
@@ -678,9 +678,9 @@ export default function ReportArchive() {
                     <span>Remove Report</span>
                   </button>
                 )}
-                <button 
-                  type="button" 
-                  className="btn-cancel-notif" 
+                <button
+                  type="button"
+                  className="btn-cancel-notif"
                   onClick={() => {
                     setShowRemarksPopup(false);
                     setEditingReport(null);

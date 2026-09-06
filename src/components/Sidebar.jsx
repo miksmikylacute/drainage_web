@@ -11,7 +11,9 @@ export default function Sidebar() {
   const { signOut, adminNotifications, residents, session } = useApp();
   const [showLogoutModal, setShowLogoutModal] = useState(false);
 
-  const reportsUnreadCount = (adminNotifications || []).filter((item) => !item.isRead).length;
+  const reportsUnreadCount = (adminNotifications || []).filter(
+    (item) => !item.isRead && item.type !== 'new_user'
+  ).length;
   const isSuperAdmin = session?.user?.role === 'super_admin';
   const visibleUsers = (residents || []).filter((user) => isSuperAdmin || user.role === 'resident');
   const pendingResidentsCount = visibleUsers.filter((u) => u.status === 'Pending').length;

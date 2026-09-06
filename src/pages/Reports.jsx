@@ -274,40 +274,40 @@ export default function Reports() {
                     : false;
 
                   return (
-                  <tr
-                    key={report.id}
-                    id={`report-row-${report.id}`}
-                    className={isFocusedReport ? 'report-row-highlight' : ''}
-                  >
-                    <td>{report.issue}</td>
-                    <td>{report.location}</td>
-                    <td>{report.submittedBy || 'Anonymous'}</td>
-                    <td>
-                      {report.priority ? (
-                        <span className={`priority-badge priority-${report.priority.toLowerCase()}`}>
-                          {report.priority}
+                    <tr
+                      key={report.id}
+                      id={`report-row-${report.id}`}
+                      className={isFocusedReport ? 'report-row-highlight' : ''}
+                    >
+                      <td>{report.issue}</td>
+                      <td>{report.location}</td>
+                      <td>{report.submittedBy || 'Anonymous'}</td>
+                      <td>
+                        {report.priority ? (
+                          <span className={`priority-badge priority-${report.priority.toLowerCase()}`}>
+                            {report.priority}
+                          </span>
+                        ) : (
+                          ''
+                        )}
+                      </td>
+                      <td>
+                        <span className={`status-badge ${report.statusClass}`}>
+                          {report.status}
                         </span>
-                      ) : (
-                        ''
-                      )}
-                    </td>
-                    <td>
-                      <span className={`status-badge ${report.statusClass}`}>
-                        {report.status}
-                      </span>
-                    </td>
-                    <td>{report.dateSubmitted}</td>
-                    <td style={{ textAlign: 'right' }}>
-                      <button
-                        className="btn-delete"
-                        onClick={() => handleOpenEdit(report)}
-                        title="Edit report details"
-                        style={{ color: '#000000' }}
-                      >
-                        <Edit size={16} />
-                      </button>
-                    </td>
-                  </tr>
+                      </td>
+                      <td>{report.dateSubmitted}</td>
+                      <td style={{ textAlign: 'right' }}>
+                        <button
+                          className="btn-delete"
+                          onClick={() => handleOpenEdit(report)}
+                          title="Edit report details"
+                          style={{ color: '#000000' }}
+                        >
+                          <Edit size={16} />
+                        </button>
+                      </td>
+                    </tr>
                   );
                 })
               ) : (
@@ -363,7 +363,7 @@ export default function Reports() {
       {currentEditingReport && (
         <div className="modal-overlay report-modal-overlay" onClick={() => setEditingReport(null)}>
           <div className="report-modal-content" onClick={(e) => e.stopPropagation()}>
-            
+
             {/* Back Button Link */}
             <button className="back-link" onClick={() => setEditingReport(null)}>
               <ChevronLeft size={20} />
@@ -373,14 +373,14 @@ export default function Reports() {
             <div className="report-modal-grid">
               <section className="report-detail-panel">
                 <div className="report-panel-title">Report Details</div>
-                <div className="report-detail-row">
+                { /* <div className="report-detail-row">
                   <span className="report-detail-label">Report ID</span>
                   <span className="report-detail-value">{currentEditingReport.displayId}</span>
-                </div>
+                </div> */ }
                 <div className="report-detail-row">
                   <span className="report-detail-label">Location</span>
                   {isReportVisibleOnMap(currentEditingReport) ? (
-                    <span 
+                    <span
                       className="report-detail-value location-link"
                       onClick={() => navigate(`/map?focus=${currentEditingReport.id}`)}
                     >
@@ -472,7 +472,7 @@ export default function Reports() {
             {/* Bottom edit inputs form */}
             <form className="report-action-form" onSubmit={handleSave}>
               <div className="report-edit-controls">
-                
+
                 {/* Remarks field */}
                 <div className="report-form-field">
                   <div className="remarks-header-row">
@@ -545,9 +545,9 @@ export default function Reports() {
                     <span>Remove Report</span>
                   </button>
                 )}
-                <button 
-                  type="button" 
-                  className="btn-cancel-notif" 
+                <button
+                  type="button"
+                  className="btn-cancel-notif"
                   onClick={() => {
                     setShowRemarksPopup(false);
                     setEditingReport(null);
@@ -555,9 +555,9 @@ export default function Reports() {
                 >
                   Cancel
                 </button>
-                <button 
-                  type="submit" 
-                  className="btn-send-notif" 
+                <button
+                  type="submit"
+                  className="btn-send-notif"
                 >
                   Update Status
                 </button>

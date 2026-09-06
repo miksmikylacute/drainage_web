@@ -16,3 +16,12 @@ export function formatReportCoordinates(reportOrLat, maybeLng) {
 
   return `${lat.toFixed(6)}, ${lng.toFixed(6)}`;
 }
+
+export function cleanLocationText(locationStr) {
+  if (!locationStr || typeof locationStr !== 'string') return '';
+  return locationStr
+    .replace(/\s*-\s*pinned location\s*\([^)]*\)/gi, '')
+    .replace(/\s*pinned location\s*\([^)]*\)/gi, '')
+    .replace(/\s*\([\d\.\s,-]+\)/gi, '')
+    .trim();
+}
