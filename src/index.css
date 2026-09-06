@@ -207,13 +207,13 @@ a {
 }
 
 .priority-badge.priority-low {
-  background-color: #fff9e6;
-  color: #d97706;
+  background-color: #fefce8;
+  color: #ca8a04;
 }
 
 .priority-badge.priority-medium {
-  background-color: #ffedd5;
-  color: #c2410c;
+  background-color: #fff7ed;
+  color: #ea580c;
 }
 
 .priority-badge.priority-high {

@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
+import { WifiOff } from 'lucide-react';
 import { useApp } from '../context/useApp';
 import {
   buildReportMarkerSvg,
@@ -12,7 +13,7 @@ import {
   MAUBAN_CENTER,
   REPORT_STATUS_LEGEND,
 } from '../lib/reportMapMarkers';
-import { formatReportCoordinates } from '../lib/reportCoordinates';
+import { formatReportCoordinates, cleanLocationText } from '../lib/reportCoordinates';
 import '../css/map.css';
 
 export default function MapView() {
@@ -21,10 +22,22 @@ export default function MapView() {
   const focusReportId = searchParams.get('focus');
   const { reports, reportLogs } = useApp();
   const [archiveNow, setArchiveNow] = useState(() => new Date());
+  const [isOffline, setIsOffline] = useState(!navigator.onLine);
   const mapRef = useRef(null);
   const leafletMapRef = useRef(null);
   const markersRef = useRef([]);
   const [mapReady, setMapReady] = useState(false);
+
+  useEffect(() => {
+    const handleOnline = () => setIsOffline(false);
+    const handleOffline = () => setIsOffline(true);
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, []);
 
   useEffect(() => {
     const timer = window.setInterval(() => setArchiveNow(new Date()), 60 * 1000);
@@ -119,11 +132,11 @@ export default function MapView() {
           <h4 class="map-popup-title">${report.issue}</h4>
           <p class="map-popup-location">
             <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="map-popup-loc-icon"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>
-            <span>${report.location}</span>
+            <span>${cleanLocationText(report.location)}</span>
           </p>
           <div class="map-popup-coords-box">
-            <span class="map-popup-coords-label">Coords:</span>
-            <span class="map-popup-coords-val">${formatReportCoordinates(report.latitude, report.longitude)}</span>
+            <span class="map-popup-coords-label">Coordinates:</span>
+            <span class="map-popup-coords-val">${formatReportCoordinates(report)}</span>
           </div>
           <div class="map-popup-reporter">
             <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
@@ -193,7 +206,32 @@ export default function MapView() {
         </div>
       </div>
 
-      <div className="map-leaflet-card">
+      <div className="map-leaflet-card" style={{ position: 'relative' }}>
+        {isOffline && (
+          <div
+            style={{
+              position: 'absolute',
+              top: '16px',
+              left: '50%',
+              transform: 'translateX(-50%)',
+              zIndex: 1000,
+              backgroundColor: '#dc2626',
+              color: '#ffffff',
+              padding: '8px 18px',
+              borderRadius: '8px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              fontWeight: '600',
+              fontSize: '13px',
+              boxShadow: '0 4px 12px rgba(0,0,0,0.25)',
+              pointerEvents: 'none',
+            }}
+          >
+            <WifiOff size={16} />
+            <span>No Internet Connection: OpenStreetMap tiles cannot be loaded.</span>
+          </div>
+        )}
         <div ref={mapRef} className="map-leaflet-container" />
       </div>
     </div>

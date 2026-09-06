@@ -82,7 +82,11 @@
 }
 
 .input-field:focus {
-  border-color: #9ca3af;
+  border-color: #2196F3;
+}
+
+.input-group:focus-within .input-prefix-icon {
+  color: #2196F3;
 }
 
 .input-prefix-icon {

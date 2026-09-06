@@ -104,6 +104,7 @@ function mapAdminNotification(notification) {
   return {
     id: notification.id,
     reportId: notification.report_id,
+    userId: notification.user_id || null,
     title: notification.title || 'Notification',
     message: notification.message || '',
     type: notification.type || 'new_report',
@@ -235,7 +236,7 @@ export function AppProvider({ children }) {
     try {
       const { data: notificationRows, error: notificationsError } = await supabase
         .from('admin_notifications')
-        .select('id,report_id,title,message,type,is_read,created_at,read_at,read_by')
+        .select('id,report_id,user_id,title,message,type,is_read,created_at,read_at,read_by')
         .order('created_at', { ascending: false });
 
       if (notificationsError) throw notificationsError;
@@ -369,7 +370,7 @@ export function AppProvider({ children }) {
           .order('created_at', { ascending: false }),
         supabase
           .from('admin_notifications')
-          .select('id,report_id,title,message,type,is_read,created_at,read_at,read_by')
+          .select('id,report_id,user_id,title,message,type,is_read,created_at,read_at,read_by')
           .order('created_at', { ascending: false }),
         supabase
           .from('hotlines')

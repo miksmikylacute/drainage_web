@@ -170,7 +170,12 @@ export default function Login() {
           </div>
 
           <div className="login-forgot-pwd">
-            <a href="#forgot" className="forgot-pwd-link" onClick={handlePasswordReset}>
+            <a
+              href="#forgot"
+              className="forgot-pwd-link"
+              onClick={handlePasswordReset}
+              style={{ color: "#2196F3" }}
+            >
               Forgot Password?
             </a>
           </div>

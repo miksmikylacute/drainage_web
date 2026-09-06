@@ -110,6 +110,8 @@ export default function Header() {
       setIsNotificationsOpen(false);
       if (notification.reportId) {
         navigate(`/reports?focus=${notification.reportId}&status=Pending`);
+      } else if (notification.userId || notification.type === 'new_user') {
+        navigate(`/residents?focus=${notification.userId || ''}`);
       }
     } catch (error) {
       alert(error.message || 'Unable to open notification.');
@@ -136,8 +138,8 @@ export default function Header() {
             type="button"
             className={`admin-notification-btn ${unreadCount > 0 ? 'has-unread' : ''}`}
             onClick={() => setIsNotificationsOpen((current) => !current)}
-            title="New report notifications"
-            aria-label="New report notifications"
+            title="Notifications"
+            aria-label="Notifications"
           >
             <Bell size={21} />
             {unreadCount > 0 && (
@@ -151,7 +153,7 @@ export default function Header() {
             <div className="admin-notification-menu">
               <div className="admin-notification-menu-header">
                 <div>
-                  <h3>New Reports</h3>
+                  <h3>Notifications</h3>
                   <p>{unreadCount} unread notification{unreadCount === 1 ? '' : 's'}</p>
                 </div>
                 {unreadCount > 0 && (
@@ -173,7 +175,12 @@ export default function Header() {
                     >
                       <span className="admin-notification-dot" />
                       <span className="admin-notification-body">
-                        <strong>{notification.title}</strong>
+                        <span className="admin-notification-header-line">
+                          <strong>{notification.title}</strong>
+                          <span className={`admin-notification-pill ${notification.type === 'new_user' ? 'user' : 'report'}`}>
+                            {notification.type === 'new_user' ? 'Resident' : 'Report'}
+                          </span>
+                        </span>
                         <span>{notification.message}</span>
                         <small>{notification.createdAtLabel}</small>
                       </span>
@@ -181,7 +188,7 @@ export default function Header() {
                   ))
                 ) : (
                   <div className="admin-notification-empty">
-                    No new report notifications.
+                    No new notifications.
                   </div>
                 )}
               </div>
@@ -244,11 +251,6 @@ export default function Header() {
               <div className="form-group">
                 <label className="form-label">Full Name</label>
                 <input className="form-input" value={fullname} onChange={(e) => setFullname(e.target.value)} required />
-              </div>
-
-              <div className="form-group">
-                <label className="form-label">Phone</label>
-                <input className="form-input" value={phone} onChange={(e) => setPhone(e.target.value)} />
               </div>
 
               <div className="form-group">
