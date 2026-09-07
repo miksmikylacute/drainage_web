@@ -573,8 +573,42 @@ export function AppProvider({ children }) {
       throw new Error('Email is required.');
     }
 
-    const { error: resetError } = await supabase.auth.resetPasswordForEmail(email.trim());
+    const redirectUrl = `${window.location.origin}/reset-password`;
+    const { error: resetError } = await supabase.auth.resetPasswordForEmail(email.trim(), {
+      redirectTo: redirectUrl,
+    });
     if (resetError) throw resetError;
+  };
+
+  const updatePassword = async (newPassword) => {
+    if (!newPassword || newPassword.length < 8) {
+      throw new Error('Password must be at least 8 characters long.');
+    }
+
+    const { error: updateError } = await supabase.auth.updateUser({
+      password: newPassword,
+    });
+    if (updateError) throw updateError;
+  };
+
+  const verifyOtpAndResetPassword = async ({ email, token, newPassword }) => {
+    if (!email?.trim()) throw new Error('Email is required.');
+    if (!token?.trim()) throw new Error('Verification code is required.');
+    if (!newPassword || newPassword.length < 8) {
+      throw new Error('Password must be at least 8 characters long.');
+    }
+
+    const { error: verifyError } = await supabase.auth.verifyOtp({
+      email: email.trim(),
+      token: token.trim(),
+      type: 'recovery',
+    });
+    if (verifyError) throw verifyError;
+
+    const { error: updateError } = await supabase.auth.updateUser({
+      password: newPassword,
+    });
+    if (updateError) throw updateError;
   };
 
   const updateCurrentProfile = async ({ fullname, phone, avatarFile }) => {
@@ -1019,6 +1053,8 @@ export function AppProvider({ children }) {
     signIn,
     signOut,
     resetPassword,
+    updatePassword,
+    verifyOtpAndResetPassword,
     updateCurrentProfile,
     updateReportDetails,
     markAdminNotificationRead,

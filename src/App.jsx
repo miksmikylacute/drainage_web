@@ -3,6 +3,7 @@ import { AppProvider } from './context/AppContext';
 import { useApp } from './context/useApp';
 import Layout from './components/Layout';
 import Login from './pages/Login';
+import ResetPassword from './pages/ResetPassword';
 import Dashboard from './pages/Dashboard';
 import Reports from './pages/Reports';
 import ReportArchive from './pages/ReportArchive';
@@ -29,6 +30,7 @@ export default function App() {
         <Routes>
           {/* Landing / Root is Login Page */}
           <Route path="/" element={<Login />} />
+          <Route path="/reset-password" element={<ResetPassword />} />
           
           {/* Main Dashboard Layout wrapper */}
           <Route element={<ProtectedLayout />}>

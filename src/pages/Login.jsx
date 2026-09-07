@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { useApp } from '../context/useApp';
 import '../css/login.css';
 import { User, Lock, Eye, EyeOff } from 'lucide-react';
@@ -57,7 +57,7 @@ export default function Login() {
   const [error, setError] = useState('');
   const [dialog, setDialog] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const { resetPassword, signIn } = useApp();
+  const { signIn } = useApp();
   const navigate = useNavigate();
 
   const handleLogin = async (e) => {
@@ -87,44 +87,12 @@ export default function Login() {
     }
   };
 
-  const handlePasswordReset = async (e) => {
-    e.preventDefault();
-
-    if (!username.trim()) {
-      setError('Enter your email before requesting a password reset.');
-      return;
-    }
-
-    setIsSubmitting(true);
-    setError('');
-
-    try {
-      await resetPassword(username.trim());
-      setDialog({
-        type: 'success',
-        title: 'Password Reset Sent',
-        message: 'If this email is registered, a password reset link will arrive shortly.'
-      });
-    } catch (resetError) {
-      setDialog({
-        type: 'error',
-        title: 'Reset Failed',
-        message: getFriendlyAuthMessage(
-          resetError,
-          'We could not send a password reset email. Please try again.'
-        )
-      });
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
   return (
     <div className="login-container">
       <LoginDialog dialog={dialog} onClose={() => setDialog(null)} />
       <div className="login-card">
         <div className="login-header">
-          <img src={drainageLogo} alt="Drainage Reporting" className="login-logo" />
+          <img src={drainageLogo} alt="DrainAlert" className="login-logo" />
           <h1 className="login-title">Admin Login</h1>
           <p className="login-subtitle">Please login to continue</p>
         </div>
@@ -170,14 +138,13 @@ export default function Login() {
           </div>
 
           <div className="login-forgot-pwd">
-            <a
-              href="#forgot"
+            <Link
+              to="/reset-password"
               className="forgot-pwd-link"
-              onClick={handlePasswordReset}
               style={{ color: "#2196F3" }}
             >
               Forgot Password?
-            </a>
+            </Link>
           </div>
 
           <button type="submit" className="login-btn">
