@@ -22,6 +22,6 @@ export function cleanLocationText(locationStr) {
   return locationStr
     .replace(/\s*-\s*pinned location\s*\([^)]*\)/gi, '')
     .replace(/\s*pinned location\s*\([^)]*\)/gi, '')
-    .replace(/\s*\([\d\.\s,-]+\)/gi, '')
+    .replace(/\s*\([\d.\s,-]+\)/gi, '')
     .trim();
 }
