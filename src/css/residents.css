@@ -694,3 +694,38 @@
     background-color: #eff6ff;
   }
 }
+
+/* Mobile View for Residents Management */
+@media (max-width: 768px) {
+  .user-controls-row {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+  }
+
+  .resident-filter-tabs {
+    overflow-x: auto;
+    flex-wrap: nowrap;
+    -webkit-overflow-scrolling: touch;
+    padding-bottom: 6px;
+    width: 100%;
+  }
+
+  .resident-tab {
+    padding: 8px 14px;
+    font-size: 13px;
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+
+  .id-upload-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .user-modal-content {
+    width: calc(100vw - 24px);
+    padding: 20px 16px;
+    max-height: 90vh;
+    overflow-y: auto;
+  }
+}

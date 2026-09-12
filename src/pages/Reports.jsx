@@ -252,18 +252,18 @@ export default function Reports() {
       </div>
 
       {/* Reports Table Container */}
-      <div className="card" style={{ padding: '8px 24px 24px' }}>
+      <div className="card table-card">
         <div className="table-container">
           <table className="custom-table">
             <thead>
               <tr>
-                <th>Title</th>
-                <th>Location</th>
-                <th>Reporter</th>
-                <th>Priority</th>
-                <th>Status</th>
-                <th>Date Submitted</th>
-                <th style={{ textAlign: 'right' }}>Actions</th>
+                <th style={{ width: '23%' }}>Title</th>
+                <th style={{ width: '25%' }}>Location</th>
+                <th style={{ width: '15%' }}>Reporter</th>
+                <th style={{ width: '10%' }}>Priority</th>
+                <th style={{ width: '10%' }}>Status</th>
+                <th style={{ width: '11%' }}>Date Submitted</th>
+                <th style={{ width: '6%', textAlign: 'right' }}>Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -277,27 +277,44 @@ export default function Reports() {
                     <tr
                       key={report.id}
                       id={`report-row-${report.id}`}
-                      className={isFocusedReport ? 'report-row-highlight' : ''}
+                      className={`reports-table-row ${isFocusedReport ? 'report-row-highlight' : ''}`}
                     >
-                      <td>{report.issue}</td>
-                      <td>{report.location}</td>
-                      <td>{report.submittedBy || 'Anonymous'}</td>
-                      <td>
+                      <td className="col-title">
+                        <span className="mobile-card-title">{report.issue}</span>
+                      </td>
+                      <td className="col-location">
+                        <span className="mobile-loc-text">
+                          <span className="mobile-only-icon">📍 </span>
+                          {report.location}
+                        </span>
+                      </td>
+                      <td className="col-reporter">
+                        <span className="mobile-meta-item">
+                          <span className="mobile-only-icon">👤 </span>
+                          {report.submittedBy || 'Anonymous'}
+                        </span>
+                      </td>
+                      <td className="col-priority">
                         {report.priority ? (
                           <span className={`priority-badge priority-${report.priority.toLowerCase()}`}>
                             {report.priority}
                           </span>
                         ) : (
-                          ''
+                          <span className="mobile-empty-dash">—</span>
                         )}
                       </td>
-                      <td>
+                      <td className="col-status">
                         <span className={`status-badge ${report.statusClass}`}>
                           {report.status}
                         </span>
                       </td>
-                      <td>{report.dateSubmitted}</td>
-                      <td style={{ textAlign: 'right' }}>
+                      <td className="col-date">
+                        <span className="mobile-meta-item">
+                          <span className="mobile-only-icon">📅 </span>
+                          {report.dateSubmitted}
+                        </span>
+                      </td>
+                      <td className="col-actions" style={{ textAlign: 'right' }}>
                         <button
                           className="btn-delete"
                           onClick={() => handleOpenEdit(report)}
@@ -312,7 +329,7 @@ export default function Reports() {
                 })
               ) : (
                 <tr>
-                  <td colSpan="6" style={{ textAlign: 'center', padding: '40px', color: '#64748b' }}>
+                  <td colSpan="7" style={{ textAlign: 'center', padding: '40px', color: '#64748b' }}>
                     No reports match your filters.
                   </td>
                 </tr>

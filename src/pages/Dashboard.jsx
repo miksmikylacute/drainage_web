@@ -531,7 +531,7 @@ export default function Dashboard() {
       </div>
 
       {/* Recent Reports Table - Full Width */}
-      <div className="card" style={{ marginBottom: '24px' }}>
+      <div className="card table-card" style={{ marginBottom: '24px' }}>
         <div className="section-header">
           <h2>Recent Report</h2>
           <Link to="/reports" className="view-all-link">
@@ -543,36 +543,53 @@ export default function Dashboard() {
           <table className="custom-table">
             <thead>
               <tr>
-                <th>Title</th>
-                <th>Location</th>
-                <th>Reporter</th>
-                <th>Priority</th>
-                <th>Status</th>
-                <th>Date Submitted</th>
+                <th style={{ width: '25%' }}>Title</th>
+                <th style={{ width: '27%' }}>Location</th>
+                <th style={{ width: '16%' }}>Reporter</th>
+                <th style={{ width: '10%' }}>Priority</th>
+                <th style={{ width: '10%' }}>Status</th>
+                <th style={{ width: '12%' }}>Date Submitted</th>
               </tr>
             </thead>
             <tbody>
               {recentReports.length > 0 ? (
                 recentReports.map((report) => (
-                  <tr key={report.id}>
-                    <td>{report.issue}</td>
-                    <td>{report.location}</td>
-                    <td>{report.submittedBy || 'Anonymous'}</td>
-                    <td>
+                  <tr key={report.id} className="dashboard-report-row">
+                    <td className="col-title">
+                      <span className="mobile-card-title">{report.issue}</span>
+                    </td>
+                    <td className="col-location">
+                      <span className="mobile-loc-text">
+                        <span className="mobile-only-icon">📍 </span>
+                        {report.location}
+                      </span>
+                    </td>
+                    <td className="col-reporter">
+                      <span className="mobile-meta-item">
+                        <span className="mobile-only-icon">👤 </span>
+                        {report.submittedBy || 'Anonymous'}
+                      </span>
+                    </td>
+                    <td className="col-priority">
                       {report.priority ? (
                         <span className={`priority-badge priority-${report.priority.toLowerCase()}`}>
                           {report.priority}
                         </span>
                       ) : (
-                        ''
+                        <span className="mobile-empty-dash">—</span>
                       )}
                     </td>
-                    <td>
+                    <td className="col-status">
                       <span className={`status-badge ${report.statusClass}`}>
                         {report.status}
                       </span>
                     </td>
-                    <td>{report.dateSubmitted}</td>
+                    <td className="col-date">
+                      <span className="mobile-meta-item">
+                        <span className="mobile-only-icon">📅 </span>
+                        {report.dateSubmitted}
+                      </span>
+                    </td>
                   </tr>
                 ))
               ) : (

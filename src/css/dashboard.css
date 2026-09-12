@@ -16,12 +16,35 @@
 @media (max-width: 850px) {
   .stats-grid {
     grid-template-columns: repeat(2, 1fr);
+    gap: 14px;
+    margin-bottom: 20px;
   }
 }
 
-@media (max-width: 550px) {
+@media (max-width: 580px) {
   .stats-grid {
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+    margin-bottom: 16px;
+  }
+
+  /* Make Total Reports span full width across the top */
+  .stat-card-wrapper:first-child {
+    grid-column: 1 / -1;
+  }
+
+  .stat-card {
+    padding: 14px 10px;
+    border-radius: 14px;
+  }
+
+  .stat-title {
+    font-size: 12px;
+    margin-bottom: 4px;
+  }
+
+  .stat-value {
+    font-size: 24px;
   }
 }
 
@@ -526,4 +549,106 @@
 
 .super-admin-action:hover {
   background: #dbeafe;
+}
+
+/* ─────────────────────────────────────────────────────────────
+   Mobile View Refinements for Dashboard
+   ───────────────────────────────────────────────────────────── */
+@media (max-width: 768px) {
+  .dashboard-layout {
+    gap: 16px;
+  }
+
+  .status-line-controls {
+    width: 100%;
+    justify-content: space-between;
+    margin-top: 6px;
+  }
+
+  .status-line-select {
+    flex: 1;
+    min-width: 140px;
+    height: 34px;
+    font-size: 12px;
+  }
+
+  .status-line-chart-wrap {
+    min-height: auto;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    border-radius: 12px;
+  }
+
+  .status-line-chart {
+    min-width: 600px;
+    height: 250px;
+  }
+
+  .status-line-legend {
+    gap: 8px 12px;
+    margin-top: 10px;
+  }
+
+  .status-line-legend-item {
+    font-size: 11px;
+  }
+
+  .dashboard-bottom-grid {
+    gap: 16px;
+  }
+
+  .bottom-card {
+    min-height: auto;
+  }
+
+  .chart-container {
+    justify-content: center;
+    padding: 8px 0;
+  }
+
+  .pie-legend {
+    width: 100%;
+    flex: 1 1 100%;
+    gap: 8px;
+  }
+
+  .legend-item {
+    font-size: 12px;
+  }
+
+  .dashboard-mini-map {
+    height: 200px !important;
+  }
+
+  .dashboard-map-legend {
+    gap: 6px;
+    margin-top: 10px;
+  }
+
+  .dashboard-map-legend-item {
+    font-size: 11px;
+    padding: 3px 8px;
+  }
+
+  .system-info-content {
+    gap: 10px;
+  }
+
+  .system-info-item {
+    min-height: 52px;
+    padding: 10px 12px;
+  }
+
+  .system-info-label {
+    font-size: 13px;
+  }
+
+  .system-info-value {
+    font-size: 18px;
+  }
+
+  .super-admin-action {
+    min-height: 40px;
+    font-size: 12px;
+  }
 }

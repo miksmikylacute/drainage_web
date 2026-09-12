@@ -376,3 +376,44 @@
   color: var(--text-muted);
   font-size: 15px;
 }
+
+/* Mobile View for Report Archive */
+@media (max-width: 768px) {
+  .archive-filters-row {
+    flex-direction: column;
+    align-items: stretch;
+    padding: 14px;
+    gap: 12px;
+  }
+
+  .archive-search-wrapper {
+    max-width: 100%;
+    min-width: 100%;
+  }
+
+  .archive-dropdowns {
+    width: 100%;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+  }
+
+  .archive-select {
+    width: 100%;
+  }
+
+  .archive-export-btn {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .archive-table-card {
+    padding: 12px 10px 16px !important;
+  }
+
+  .archive-pagination-container {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
+}

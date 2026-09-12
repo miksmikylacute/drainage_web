@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useApp } from '../context/useApp';
-import { Search, X, Send } from 'lucide-react';
+import { Search, X, Send, Users } from 'lucide-react';
 import '../css/notifications.css';
 
 export default function Notifications() {
@@ -9,19 +9,30 @@ export default function Notifications() {
   const [selectedResidents, setSelectedResidents] = useState([]);
   const [message, setMessage] = useState('');
   const [showSuggestions, setShowSuggestions] = useState(false);
+  const [sending, setSending] = useState(false);
+
+  // Eligible residents who can receive notifications (residents that are not disabled)
+  const eligibleResidents = useMemo(() => {
+    return (residents || []).filter(
+      (res) => res.role === 'resident' && res.status !== 'Disabled'
+    );
+  }, [residents]);
+
+  const isAllSelected =
+    eligibleResidents.length > 0 &&
+    eligibleResidents.every((res) => selectedResidents.some((sel) => sel.id === res.id));
 
   // Filter suggestion list based on query and remove already selected ones
-  const suggestions = residents.filter(res => {
+  const suggestions = eligibleResidents.filter((res) => {
     const query = searchQuery.toLowerCase().trim();
     if (!query) return false;
-    if (res.role !== 'resident') return false;
-    
-    const matchesQuery = 
-      res.name.toLowerCase().includes(query) || 
-      res.email.toLowerCase().includes(query);
-      
-    const alreadySelected = selectedResidents.some(sel => sel.id === res.id);
-    
+
+    const matchesQuery =
+      (res.name && res.name.toLowerCase().includes(query)) ||
+      (res.email && res.email.toLowerCase().includes(query));
+
+    const alreadySelected = selectedResidents.some((sel) => sel.id === res.id);
+
     return matchesQuery && !alreadySelected;
   });
 
@@ -31,8 +42,18 @@ export default function Notifications() {
     setShowSuggestions(false);
   };
 
+  const handleToggleSelectAll = () => {
+    if (isAllSelected) {
+      setSelectedResidents([]);
+    } else {
+      setSelectedResidents([...eligibleResidents]);
+    }
+    setSearchQuery('');
+    setShowSuggestions(false);
+  };
+
   const handleRemoveResident = (id) => {
-    setSelectedResidents(selectedResidents.filter(res => res.id !== id));
+    setSelectedResidents(selectedResidents.filter((res) => res.id !== id));
   };
 
   const handleCancel = () => {
@@ -53,13 +74,21 @@ export default function Notifications() {
       return;
     }
 
+    setSending(true);
     try {
       await sendNotification(selectedResidents.map((resident) => resident.id), message.trim());
-      const recipientNames = selectedResidents.map(r => r.name).join(', ');
-      alert(`Notification saved for:\n${recipientNames}`);
+      const recipientCount = selectedResidents.length;
+      if (recipientCount > 3) {
+        alert(`Notification sent successfully to all ${recipientCount} selected residents!`);
+      } else {
+        const recipientNames = selectedResidents.map((r) => r.name).join(', ');
+        alert(`Notification saved for:\n${recipientNames}`);
+      }
       handleCancel();
     } catch (sendError) {
       alert(sendError.message || 'Unable to send notification.');
+    } finally {
+      setSending(false);
     }
   };
 
@@ -111,7 +140,34 @@ export default function Notifications() {
 
           {/* "To" Field Group */}
           <div className="send-notif-input-wrapper">
-            <label className="send-notif-label">To:</label>
+            <div className="to-header-row">
+              <label className="send-notif-label">
+                To:
+                {selectedResidents.length > 0 && (
+                  <span style={{ fontSize: '13px', fontWeight: 500, color: '#64748b', marginLeft: '6px' }}>
+                    ({selectedResidents.length} of {eligibleResidents.length} selected)
+                  </span>
+                )}
+              </label>
+              <button
+                type="button"
+                className={`btn-select-all ${isAllSelected ? 'active' : ''}`}
+                onClick={handleToggleSelectAll}
+                disabled={eligibleResidents.length === 0 || sending}
+              >
+                {isAllSelected ? (
+                  <>
+                    <X size={14} />
+                    <span>Deselect All</span>
+                  </>
+                ) : (
+                  <>
+                    <Users size={14} />
+                    <span>Select All Residents ({eligibleResidents.length})</span>
+                  </>
+                )}
+              </button>
+            </div>
             <div className="to-list-container">
               {selectedResidents.length > 0 ? (
                 selectedResidents.map((res) => (
@@ -128,7 +184,7 @@ export default function Notifications() {
                 ))
               ) : (
                 <span style={{ color: '#94a3b8', fontSize: '14px' }}>
-                  No residents selected. Search and select above.
+                  No residents selected. Search and select above or click Select All Residents.
                 </span>
               )}
             </div>
@@ -153,6 +209,7 @@ export default function Notifications() {
             type="button" 
             className="btn-cancel-notif"
             onClick={handleCancel}
+            disabled={sending}
           >
             Cancel
           </button>
@@ -161,10 +218,11 @@ export default function Notifications() {
             type="button" 
             className="btn-send-notif"
             onClick={handleSend}
+            disabled={sending}
             style={{ display: 'flex', alignItems: 'center', gap: '8px' }}
           >
             <Send size={16} />
-            <span>Send Notification</span>
+            <span>{sending ? 'Sending...' : 'Send Notification'}</span>
           </button>
         </div>
       </div>

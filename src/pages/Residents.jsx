@@ -291,7 +291,7 @@ export default function Residents() {
         <div className="user-management-loading">Loading users...</div>
       )}
 
-      <div className="card" style={{ padding: '8px 24px 24px' }}>
+      <div className="card table-card">
         <div className="table-container">
           <table className="custom-table">
             <thead>
@@ -311,9 +311,9 @@ export default function Residents() {
                   <tr
                     key={user.id}
                     id={`user-row-${user.id}`}
-                    className={focusUserId === user.id ? 'user-row-highlight' : ''}
+                    className={`residents-table-row ${focusUserId === user.id ? 'user-row-highlight' : ''}`}
                   >
-                    <td>
+                    <td className="col-user-name">
                       <div 
                         className="user-cell" 
                         style={{ cursor: 'pointer' }}
@@ -322,12 +322,16 @@ export default function Residents() {
                         <span className="user-avatar-sm">
                           {user.avatarUrl ? <img src={user.avatarUrl} alt="" /> : user.name.charAt(0)}
                         </span>
-                        <span style={{ fontWeight: '600', color: '#0f172a' }}>{user.name}</span>
+                        <span className="user-name-text" style={{ fontWeight: '600', color: '#0f172a' }}>{user.name}</span>
                       </div>
                     </td>
-                    <td style={{ color: '#334155' }}>{user.contact || '—'}</td>
-                    <td style={{ color: '#334155' }}>{user.email}</td>
-                    <td>
+                    <td className="col-user-contact" style={{ color: '#334155' }}>
+                      <span className="mobile-contact-text">{user.contact ? `📞 ${user.contact}` : '—'}</span>
+                    </td>
+                    <td className="col-user-email" style={{ color: '#334155' }}>
+                      <span className="mobile-email-text">✉️ {user.email}</span>
+                    </td>
+                    <td className="col-user-id">
                       {user.idCardFrontUrl || user.idCardBackUrl || user.idCardUrl ? (
                         <button
                           type="button"
@@ -339,22 +343,22 @@ export default function Residents() {
                           <span>View ID</span>
                         </button>
                       ) : (
-                        <span style={{ color: '#94a3b8', fontSize: '13px' }}>—</span>
+                        <span className="mobile-no-id" style={{ color: '#94a3b8', fontSize: '13px' }}>—</span>
                       )}
                     </td>
-                    <td>
+                    <td className="col-user-role">
                       <span className={`role-badge ${user.role}`}>
                         {user.role === 'super_admin' ? 'Super Admin' : user.role}
                       </span>
                     </td>
-                    <td>
+                    <td className="col-user-status">
                       <span className={`user-status-pill status-${user.status ? user.status.toLowerCase() : 'active'}`}>
                         <span className="status-pill-dot"></span>
                         {user.status === 'Pending' ? 'Pending' : (user.status || 'Active')}
                       </span>
                     </td>
-                    <td style={{ textAlign: 'right' }}>
-                      <div style={{ display: 'inline-flex', gap: '6px', justifyContent: 'flex-end', alignItems: 'center' }}>
+                    <td className="col-user-actions" style={{ textAlign: 'right' }}>
+                      <div className="residents-actions-wrap" style={{ display: 'inline-flex', gap: '6px', justifyContent: 'flex-end', alignItems: 'center' }}>
                         {user.status === 'Pending' ? (
                           <>
                             <button

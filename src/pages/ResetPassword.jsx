@@ -50,16 +50,36 @@ export default function ResetPassword() {
   useEffect(() => {
     let isMounted = true;
 
-    // Check existing session
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    const initRecoverySession = async () => {
+      // 1. Check if URL has PKCE code parameter (?code=...)
+      try {
+        const params = new URLSearchParams(window.location.search);
+        const code = params.get('code');
+
+        if (code) {
+          const { data, error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
+          if (!exchangeError && data?.session && isMounted) {
+            setHasSession(true);
+            setCheckingSession(false);
+            return;
+          }
+        }
+      } catch {
+        // Fall through to getSession check
+      }
+
+      // 2. Check existing session (or hash tokens)
+      const { data: { session } } = await supabase.auth.getSession();
       if (!isMounted) return;
       if (session) {
         setHasSession(true);
       }
       setCheckingSession(false);
-    });
+    };
 
-    // Listen for auth state change from email reset link redirect
+    initRecoverySession();
+
+    // 3. Listen for auth state change from email reset link redirect
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       if (!isMounted) return;
       if (event === 'PASSWORD_RECOVERY' || (session && event === 'SIGNED_IN')) {

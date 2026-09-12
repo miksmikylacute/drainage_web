@@ -573,7 +573,14 @@ export function AppProvider({ children }) {
       throw new Error('Email is required.');
     }
 
-    const redirectUrl = `${window.location.origin}/reset-password`;
+    const defaultSiteUrl =
+      typeof window !== 'undefined' &&
+      (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
+        ? window.location.origin
+        : 'https://drainalert.site';
+    const siteUrl = import.meta.env.VITE_SITE_URL || defaultSiteUrl;
+    const redirectUrl = `${siteUrl}/reset-password`;
+
     const { error: resetError } = await supabase.auth.resetPasswordForEmail(email.trim(), {
       redirectTo: redirectUrl,
     });

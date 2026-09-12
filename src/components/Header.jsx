@@ -1,9 +1,9 @@
 import { useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { Bell, Camera, CheckCheck, User, X } from 'lucide-react';
+import { Bell, Camera, CheckCheck, Menu, User, X } from 'lucide-react';
 import { useApp } from '../context/useApp';
 
-export default function Header() {
+export default function Header({ onToggleMobileMenu }) {
   const location = useLocation();
   const navigate = useNavigate();
   const {
@@ -128,9 +128,21 @@ export default function Header() {
 
   return (
     <header className="app-header">
-      <div className="header-title-group">
-        <h2 className="header-title">{getTitle(location.pathname)}</h2>
-        <p className="header-subtitle">{getSubtitle(location.pathname)}</p>
+      <div className="header-left">
+        {onToggleMobileMenu && (
+          <button
+            type="button"
+            className="mobile-menu-toggle-btn"
+            onClick={onToggleMobileMenu}
+            aria-label="Toggle navigation menu"
+          >
+            <Menu size={24} />
+          </button>
+        )}
+        <div className="header-title-group">
+          <h2 className="header-title">{getTitle(location.pathname)}</h2>
+          <p className="header-subtitle">{getSubtitle(location.pathname)}</p>
+        </div>
       </div>
       <div className="header-actions">
         <div className="admin-notification-wrap">
