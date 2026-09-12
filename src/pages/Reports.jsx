@@ -13,6 +13,22 @@ const REPORT_TABS = ['All', 'Pending', 'In Progress', 'Resolved', 'Rejected'];
 const ITEMS_PER_PAGE = 10;
 
 
+function renderDateSubmitted(dateStr) {
+  if (!dateStr || dateStr === 'N/A') return 'N/A';
+  const parts = dateStr.split(', ');
+  if (parts.length >= 2) {
+    const datePart = parts.slice(0, -1).join(', ') + ',';
+    const timePart = parts[parts.length - 1];
+    return (
+      <div className="date-submitted-wrap">
+        <div>{datePart}</div>
+        <div className="date-time-text">{timePart}</div>
+      </div>
+    );
+  }
+  return dateStr;
+}
+
 export default function Reports() {
   const {
     reports,
@@ -257,13 +273,13 @@ export default function Reports() {
           <table className="custom-table">
             <thead>
               <tr>
-                <th style={{ width: '23%' }}>Title</th>
-                <th style={{ width: '25%' }}>Location</th>
-                <th style={{ width: '15%' }}>Reporter</th>
-                <th style={{ width: '10%' }}>Priority</th>
-                <th style={{ width: '10%' }}>Status</th>
+                <th style={{ width: '15%' }}>Title</th>
+                <th style={{ width: '38%' }}>Location</th>
+                <th style={{ width: '11%' }}>Reporter</th>
+                <th style={{ width: '10%', textAlign: 'center' }}>Priority</th>
+                <th style={{ width: '10%', textAlign: 'center' }}>Status</th>
                 <th style={{ width: '11%' }}>Date Submitted</th>
-                <th style={{ width: '6%', textAlign: 'right' }}>Actions</th>
+                <th style={{ width: '5%', textAlign: 'center' }}>Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -294,7 +310,7 @@ export default function Reports() {
                           {report.submittedBy || 'Anonymous'}
                         </span>
                       </td>
-                      <td className="col-priority">
+                      <td className="col-priority td-center">
                         {report.priority ? (
                           <span className={`priority-badge priority-${report.priority.toLowerCase()}`}>
                             {report.priority}
@@ -303,7 +319,7 @@ export default function Reports() {
                           <span className="mobile-empty-dash">—</span>
                         )}
                       </td>
-                      <td className="col-status">
+                      <td className="col-status td-center">
                         <span className={`status-badge ${report.statusClass}`}>
                           {report.status}
                         </span>
@@ -311,15 +327,15 @@ export default function Reports() {
                       <td className="col-date">
                         <span className="mobile-meta-item">
                           <span className="mobile-only-icon">📅 </span>
-                          {report.dateSubmitted}
+                          {renderDateSubmitted(report.dateSubmitted)}
                         </span>
                       </td>
-                      <td className="col-actions" style={{ textAlign: 'right' }}>
+                      <td className="col-actions td-center">
                         <button
-                          className="btn-delete"
+                          type="button"
+                          className="btn-edit-action"
                           onClick={() => handleOpenEdit(report)}
                           title="Edit report details"
-                          style={{ color: '#000000' }}
                         >
                           <Edit size={16} />
                         </button>

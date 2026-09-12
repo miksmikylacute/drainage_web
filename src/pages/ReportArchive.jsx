@@ -32,6 +32,22 @@ function formatDate(value) {
   }).format(new Date(value));
 }
 
+function renderDateSubmitted(dateStr) {
+  if (!dateStr || dateStr === 'N/A') return 'N/A';
+  const parts = dateStr.split(', ');
+  if (parts.length >= 2) {
+    const datePart = parts.slice(0, -1).join(', ') + ',';
+    const timePart = parts[parts.length - 1];
+    return (
+      <div className="date-submitted-wrap">
+        <div>{datePart}</div>
+        <div className="date-time-text">{timePart}</div>
+      </div>
+    );
+  }
+  return dateStr;
+}
+
 function escapeCsvCell(cell) {
   if (cell === null || cell === undefined) return '""';
   const str = String(cell).replace(/"/g, '""');
@@ -413,18 +429,22 @@ export default function ReportArchive() {
           <table className="custom-table archive-table">
             <thead>
               <tr>
-                <th style={{ width: '50px' }}>#</th>
+                <th style={{ width: '40px', textAlign: 'center' }}>#</th>
                 <th>Report Details</th>
-                <th style={{ width: '130px' }}>Status</th>
-                <th style={{ width: '180px' }}>Date Reported</th>
-                <th style={{ width: '180px' }}>Last Updated</th>
-                <th style={{ width: '100px', textAlign: 'center' }}>Actions</th>
+                <th style={{ width: '120px', textAlign: 'center' }}>Status</th>
+                <th style={{ width: '140px' }}>Date Reported</th>
+                <th style={{ width: '140px' }}>Last Updated</th>
+                <th style={{ width: '90px', textAlign: 'center' }}>Actions</th>
               </tr>
             </thead>
             <tbody>
               {displayedReports.length > 0 ? (
                 displayedReports.map((report, index) => {
                   const displayIndex = startIndex + index + 1;
+                  const formattedUpdatedDate = report.updatedAt
+                    ? formatDate(report.updatedAt)
+                    : report.dateSubmitted;
+
                   return (
                     <tr key={report.id} className="archive-table-row">
                       <td className="archive-row-number col-index">{displayIndex}</td>
@@ -458,20 +478,20 @@ export default function ReportArchive() {
                           </div>
                         </div>
                       </td>
-                      <td className="col-status">
+                      <td className="col-status td-center">
                         <span className={`status-badge ${report.statusClass}`}>
                           {report.status}
                         </span>
                       </td>
                       <td className="archive-date-cell col-reported">
                         <span className="archive-mobile-date-label">Reported: </span>
-                        <span>{report.dateSubmitted}</span>
+                        {renderDateSubmitted(report.dateSubmitted)}
                       </td>
                       <td className="archive-date-cell col-updated">
                         <span className="archive-mobile-date-label">Updated: </span>
-                        <span>{report.updatedAt ? formatDate(report.updatedAt) : report.dateSubmitted}</span>
+                        {renderDateSubmitted(formattedUpdatedDate)}
                       </td>
-                      <td className="col-actions" style={{ textAlign: 'center' }}>
+                      <td className="col-actions td-center">
                         <button
                           className="archive-btn-view"
                           onClick={() => handleOpenEdit(report)}
