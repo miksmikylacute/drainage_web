@@ -72,31 +72,60 @@ a {
 /* Table Section & Card Styles (Shared) */
 .table-container {
   width: 100%;
-  overflow-x: auto;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
+}
+
+.table-card {
+  padding: 8px 24px 24px;
 }
 
 .custom-table {
   width: 100%;
+  min-width: 0;
   border-collapse: separate;
   border-spacing: 0 8px; /* Adds space between rows */
   text-align: left;
 }
 
 .custom-table th {
-  padding: 12px 18px;
-  font-size: 14px;
+  padding: 12px 14px;
+  font-size: 13.5px;
   font-weight: 600;
   color: #000000;
   border-bottom: 1px solid var(--border);
+  white-space: nowrap;
 }
 
 .custom-table td {
-  padding: 16px 18px;
-  font-size: 15px;
+  padding: 12px 14px;
+  font-size: 14px;
   background-color: var(--bg-card);
   border-top: 1px solid #e2e8f0;
   border-bottom: 1px solid #e2e8f0;
   color: var(--text-dark);
+  vertical-align: middle;
+}
+
+/* Specific cell wrapping rules for web view so tables never overflow horizontally */
+.custom-table td.col-title,
+.custom-table td.col-location {
+  white-space: normal;
+  word-break: break-word;
+  line-height: 1.4;
+}
+
+.custom-table td.col-reporter {
+  white-space: normal;
+  word-break: break-word;
+  line-height: 1.35;
+}
+
+.custom-table td.col-priority,
+.custom-table td.col-status,
+.custom-table td.col-date,
+.custom-table td.col-actions {
+  white-space: nowrap;
 }
 
 /* Rounding the individual rows for custom look */
@@ -239,4 +268,420 @@ input[type="file"]::file-selector-button:hover {
   background-color: #dbeafe;
   color: #1d4ed8;
   border-color: #93c5fd;
+}
+
+/* Desktop helpers for mobile metadata */
+.archive-mobile-date-label {
+  display: none;
+}
+
+.hotline-phone-link {
+  color: inherit;
+  text-decoration: none;
+}
+
+.mobile-empty-dash {
+  color: #cbd5e1;
+}
+
+.mobile-only-icon {
+  display: none;
+}
+
+/* Global Mobile Styles for Tables and Cards */
+@media (max-width: 768px) {
+  .mobile-only-icon {
+    display: inline !important;
+  }
+  .card {
+    padding: 16px 14px;
+    border-radius: 16px;
+  }
+
+  .table-card {
+    padding: 12px 10px 16px !important;
+  }
+
+  /* Force table container to never scroll horizontally on mobile */
+  .table-container {
+    overflow-x: hidden !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    padding: 0 !important;
+  }
+
+  .custom-table {
+    display: block !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    border-spacing: 0 !important;
+  }
+
+  .custom-table thead {
+    display: none !important;
+  }
+
+  .custom-table tbody {
+    display: block !important;
+    width: 100% !important;
+  }
+
+  /* Each table row becomes a self-contained responsive mobile card */
+  .custom-table tbody tr {
+    display: block;
+    width: 100% !important;
+    box-sizing: border-box !important;
+    background: #ffffff !important;
+    border: 1.5px solid #e2e8f0 !important;
+    border-radius: 14px !important;
+    padding: 14px 12px !important;
+    margin-bottom: 12px !important;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.04) !important;
+    transform: none !important;
+  }
+
+  .custom-table tbody tr:hover td {
+    background-color: transparent !important;
+  }
+
+  /* Reset default table cell behaviors on mobile */
+  .custom-table td {
+    display: block !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    box-sizing: border-box !important;
+    border: none !important;
+    border-radius: 0 !important;
+    padding: 0 !important;
+    background: transparent !important;
+    white-space: normal !important;
+    word-break: break-word !important;
+  }
+
+  .custom-table tr td:first-child,
+  .custom-table tr td:last-child {
+    border: none !important;
+    border-radius: 0 !important;
+  }
+
+  /* Empty state rows */
+  .custom-table tr td[colspan] {
+    text-align: center !important;
+    padding: 30px 14px !important;
+    color: #64748b !important;
+    font-size: 14px !important;
+  }
+
+  /* ----------------------------------------------------
+     TABLE 1 & 2: DASHBOARD & REPORTS TABLES MOBILE CARD
+     ---------------------------------------------------- */
+  .dashboard-report-row,
+  .reports-table-row {
+    display: grid !important;
+    grid-template-columns: 1fr auto !important;
+    row-gap: 8px !important;
+    column-gap: 8px !important;
+    align-items: center !important;
+  }
+
+  .dashboard-report-row .col-title,
+  .reports-table-row .col-title {
+    grid-column: 1 / 2 !important;
+    font-weight: 700 !important;
+    font-size: 15px !important;
+    color: #0f172a !important;
+    line-height: 1.3 !important;
+  }
+
+  .dashboard-report-row .col-status,
+  .reports-table-row .col-status {
+    grid-column: 2 / 3 !important;
+    justify-self: end !important;
+    width: auto !important;
+  }
+
+  .dashboard-report-row .col-location,
+  .reports-table-row .col-location {
+    grid-column: 1 / -1 !important;
+    font-size: 13px !important;
+    color: #475569 !important;
+    line-height: 1.4 !important;
+  }
+
+  .dashboard-report-row .col-reporter,
+  .reports-table-row .col-reporter {
+    grid-column: 1 / 2 !important;
+    font-size: 12.5px !important;
+    color: #64748b !important;
+    display: flex !important;
+    align-items: center !important;
+  }
+
+  .dashboard-report-row .col-priority,
+  .reports-table-row .col-priority {
+    grid-column: 2 / 3 !important;
+    justify-self: end !important;
+    width: auto !important;
+  }
+
+  .dashboard-report-row .col-date,
+  .reports-table-row .col-date {
+    grid-column: 1 / 2 !important;
+    font-size: 12px !important;
+    color: #94a3b8 !important;
+  }
+
+  .reports-table-row .col-actions {
+    grid-column: 2 / 3 !important;
+    justify-self: end !important;
+    width: auto !important;
+  }
+
+  .reports-table-row .col-actions .btn-delete {
+    width: 36px;
+    height: 36px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 8px;
+    background: #f1f5f9;
+    border: 1px solid #cbd5e1;
+    cursor: pointer;
+  }
+
+  /* ----------------------------------------------------
+     TABLE 3: REPORT ARCHIVE TABLE MOBILE CARD
+     ---------------------------------------------------- */
+  .archive-table-row {
+    display: grid !important;
+    grid-template-columns: 1fr auto !important;
+    row-gap: 8px !important;
+    column-gap: 8px !important;
+    align-items: center !important;
+  }
+
+  .archive-table-row .col-index {
+    display: none !important;
+  }
+
+  .archive-table-row .col-details {
+    grid-column: 1 / -1 !important;
+  }
+
+  .archive-table-row .archive-details-cell {
+    display: flex !important;
+    align-items: flex-start !important;
+    gap: 12px !important;
+  }
+
+  .archive-table-row .archive-report-thumb {
+    width: 72px !important;
+    height: 52px !important;
+    border-radius: 8px !important;
+    flex-shrink: 0 !important;
+  }
+
+  .archive-table-row .archive-details-text {
+    flex: 1 !important;
+    min-width: 0 !important;
+  }
+
+  .archive-table-row .archive-details-title {
+    font-size: 14px !important;
+    font-weight: 700 !important;
+    line-height: 1.3 !important;
+    word-break: break-word !important;
+    white-space: normal !important;
+    display: block !important;
+  }
+
+  .archive-table-row .archive-details-loc {
+    margin-top: 4px !important;
+    font-size: 12px !important;
+    display: flex !important;
+    align-items: center !important;
+    gap: 4px !important;
+  }
+
+  .archive-table-row .archive-loc-text {
+    white-space: normal !important;
+    max-width: 100% !important;
+    word-break: break-word !important;
+  }
+
+  .archive-table-row .col-reported {
+    grid-column: 1 / 2 !important;
+    font-size: 12px !important;
+    color: #64748b !important;
+  }
+
+  .archive-table-row .col-status {
+    grid-column: 2 / 3 !important;
+    justify-self: end !important;
+    width: auto !important;
+  }
+
+  .archive-table-row .col-updated {
+    grid-column: 1 / 2 !important;
+    font-size: 12px !important;
+    color: #94a3b8 !important;
+  }
+
+  .archive-table-row .col-actions {
+    grid-column: 2 / 3 !important;
+    justify-self: end !important;
+    width: auto !important;
+  }
+
+  .archive-mobile-date-label {
+    display: inline !important;
+    font-weight: 600 !important;
+    color: #475569 !important;
+  }
+
+  /* ----------------------------------------------------
+     TABLE 4: RESIDENTS TABLE MOBILE CARD
+     ---------------------------------------------------- */
+  .residents-table-row {
+    display: grid !important;
+    grid-template-columns: 1fr auto !important;
+    row-gap: 8px !important;
+    column-gap: 8px !important;
+    align-items: center !important;
+  }
+
+  .residents-table-row .col-user-name {
+    grid-column: 1 / 2 !important;
+    min-width: 0 !important;
+  }
+
+  .residents-table-row .user-cell {
+    display: flex !important;
+    align-items: center !important;
+    gap: 10px !important;
+  }
+
+  .residents-table-row .user-name-text {
+    font-size: 14.5px !important;
+    font-weight: 700 !important;
+    color: #0f172a !important;
+    word-break: break-word !important;
+  }
+
+  .residents-table-row .col-user-status {
+    grid-column: 2 / 3 !important;
+    justify-self: end !important;
+    width: auto !important;
+  }
+
+  .residents-table-row .col-user-contact {
+    grid-column: 1 / 2 !important;
+    font-size: 13px !important;
+    color: #475569 !important;
+  }
+
+  .residents-table-row .col-user-role {
+    grid-column: 2 / 3 !important;
+    justify-self: end !important;
+    width: auto !important;
+  }
+
+  .residents-table-row .col-user-email {
+    grid-column: 1 / 2 !important;
+    font-size: 12.5px !important;
+    color: #64748b !important;
+    word-break: break-all !important;
+  }
+
+  .residents-table-row .col-user-id {
+    grid-column: 2 / 3 !important;
+    justify-self: end !important;
+    width: auto !important;
+  }
+
+  .residents-table-row .col-user-actions {
+    grid-column: 1 / -1 !important;
+    margin-top: 4px !important;
+    padding-top: 8px !important;
+    border-top: 1px dashed #e2e8f0 !important;
+  }
+
+  .residents-table-row .residents-actions-wrap {
+    display: flex !important;
+    width: 100% !important;
+    justify-content: flex-end !important;
+    align-items: center !important;
+    gap: 8px !important;
+    flex-wrap: wrap !important;
+  }
+
+  .residents-table-row .action-btn-approve,
+  .residents-table-row .action-btn-reject,
+  .residents-table-row .action-btn-toggle {
+    padding: 7px 14px !important;
+    font-size: 13px !important;
+    border-radius: 8px !important;
+  }
+
+  .residents-table-row .action-btn-delete {
+    padding: 7px 10px !important;
+    border-radius: 8px !important;
+  }
+
+  /* ----------------------------------------------------
+     TABLE 5: HOTLINES TABLE MOBILE CARD
+     ---------------------------------------------------- */
+  .hotline-table-row {
+    display: grid !important;
+    grid-template-columns: 1fr auto !important;
+    row-gap: 8px !important;
+    column-gap: 8px !important;
+    align-items: center !important;
+  }
+
+  .hotline-table-row .col-hotline-name {
+    grid-column: 1 / 2 !important;
+    min-width: 0 !important;
+  }
+
+  .hotline-table-row .hotline-name-cell strong {
+    font-size: 15px !important;
+    color: #0f172a !important;
+  }
+
+  .hotline-table-row .col-hotline-actions {
+    grid-column: 2 / 3 !important;
+    justify-self: end !important;
+    width: auto !important;
+  }
+
+  .hotline-table-row .col-hotline-phone {
+    grid-column: 1 / -1 !important;
+    font-size: 14px !important;
+  }
+
+  .hotline-phone-link {
+    color: #2563eb !important;
+    text-decoration: none !important;
+    font-weight: 700 !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    gap: 6px !important;
+  }
+
+  .hotline-phone-link:hover {
+    text-decoration: underline !important;
+  }
+
+  .status-badge {
+    padding: 4px 10px;
+    font-size: 12px;
+    white-space: nowrap;
+  }
+
+  .priority-badge {
+    padding: 3px 8px;
+    font-size: 11px;
+    white-space: nowrap;
+  }
 }

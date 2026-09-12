@@ -21,16 +21,67 @@
   color: var(--text-dark);
 }
 
+.to-header-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.to-header-row .send-notif-label {
+  margin-bottom: 0;
+}
+
+.btn-select-all {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background-color: #f0f9ff;
+  color: #0284c7;
+  border: 1px solid #bae6fd;
+  border-radius: 8px;
+  padding: 5px 12px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-select-all:hover {
+  background-color: #e0f2fe;
+  color: #0369a1;
+  border-color: #7dd3fc;
+}
+
+.btn-select-all.active {
+  background-color: #fee2e2;
+  color: #b91c1c;
+  border-color: #fca5a5;
+}
+
+.btn-select-all.active:hover {
+  background-color: #fecaca;
+  color: #991b1b;
+}
+
+.btn-select-all:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 .to-list-container {
   background-color: white;
   border: 1px solid #e2e8f0;
   border-radius: 10px;
   min-height: 52px;
+  max-height: 140px;
+  overflow-y: auto;
   padding: 8px 12px;
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
   align-items: center;
+  align-content: flex-start;
   box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.02);
 }
 
@@ -169,4 +220,34 @@
 .suggestion-email {
   font-size: 12px;
   color: var(--text-muted);
+}
+
+/* Mobile View for Notifications */
+@media (max-width: 768px) {
+  .send-notif-form-box {
+    padding: 20px 16px;
+    border-radius: 16px;
+  }
+
+  .to-header-row {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .btn-select-all {
+    font-size: 12px;
+    padding: 4px 10px;
+  }
+
+  .notif-btn-row {
+    flex-direction: column-reverse;
+    gap: 12px;
+  }
+
+  .btn-cancel-notif,
+  .btn-send-notif {
+    width: 100%;
+    justify-content: center;
+    padding: 12px 20px;
+  }
 }

@@ -1,15 +1,22 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { Home, FileText, MapPin, History, Users, Bell, PhoneCall, LogOut } from 'lucide-react';
+import { Home, FileText, MapPin, History, Users, Bell, PhoneCall, LogOut, X } from 'lucide-react';
 import { useApp } from '../context/useApp';
 import drainageLogo from '../assets/drain_alert_logo_new.png';
 
-export default function Sidebar() {
+export default function Sidebar({ isOpen = false, onClose }) {
   const location = useLocation();
   const navigate = useNavigate();
   const { signOut, adminNotifications, residents, session } = useApp();
   const [showLogoutModal, setShowLogoutModal] = useState(false);
+
+  // Close mobile drawer when navigating to a new route
+  useEffect(() => {
+    if (onClose) {
+      onClose();
+    }
+  }, [location.pathname, onClose]);
 
   const reportsUnreadCount = (adminNotifications || []).filter(
     (item) => !item.isRead && item.type !== 'new_user'
@@ -34,7 +41,7 @@ export default function Sidebar() {
   };
 
   return (
-    <aside className="sidebar">
+    <aside className={`sidebar ${isOpen ? 'sidebar-mobile-open' : ''}`}>
       <div className="sidebar-brand">
         <div className="sidebar-brand-content-wrapper">
           <div className="sidebar-brand-logo-circle">
@@ -45,6 +52,16 @@ export default function Sidebar() {
             <span className="sidebar-brand-subtitle">Drainage Reports Monitoring</span>
           </div>
         </div>
+        {onClose && (
+          <button 
+            type="button" 
+            className="sidebar-close-btn" 
+            onClick={onClose}
+            aria-label="Close navigation menu"
+          >
+            <X size={20} />
+          </button>
+        )}
       </div>
       
       <div className="sidebar-menu-panel">

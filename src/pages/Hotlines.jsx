@@ -73,7 +73,7 @@ export default function Hotlines() {
 
   const handleDelete = async (hotline) => {
     const shouldDelete = window.confirm(
-      `Delete ${hotline.name}? Mobile residents will be notified that hotline information changed.`
+      `Are you sure, you want to Delete ${hotline.name}?`
     );
     if (!shouldDelete) return;
 
@@ -117,7 +117,7 @@ export default function Hotlines() {
         </button>
       </div>
 
-      <div className="card" style={{ padding: '8px 24px 24px' }}>
+      <div className="card table-card">
         <div className="table-container">
           <table className="custom-table hotline-table">
             <thead>
@@ -130,14 +130,18 @@ export default function Hotlines() {
             <tbody>
               {filteredHotlines.length > 0 ? (
                 filteredHotlines.map((hotline) => (
-                  <tr key={hotline.id}>
-                    <td>
+                  <tr key={hotline.id} className="hotline-table-row">
+                    <td className="col-hotline-name">
                       <div className="hotline-name-cell">
                         <strong>{hotline.name}</strong>
                       </div>
                     </td>
-                    <td className="hotline-phone-cell">{hotline.phoneNumber}</td>
-                    <td style={{ textAlign: 'right' }}>
+                    <td className="col-hotline-phone">
+                      <a href={`tel:${hotline.phoneNumber}`} className="hotline-phone-link">
+                        📞 {hotline.phoneNumber}
+                      </a>
+                    </td>
+                    <td className="col-hotline-actions" style={{ textAlign: 'right' }}>
                       <div className="hotline-actions">
                         <button
                           type="button"

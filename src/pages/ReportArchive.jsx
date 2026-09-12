@@ -426,9 +426,9 @@ export default function ReportArchive() {
                 displayedReports.map((report, index) => {
                   const displayIndex = startIndex + index + 1;
                   return (
-                    <tr key={report.id}>
-                      <td className="archive-row-number">{displayIndex}</td>
-                      <td>
+                    <tr key={report.id} className="archive-table-row">
+                      <td className="archive-row-number col-index">{displayIndex}</td>
+                      <td className="col-details">
                         <div className="archive-details-cell">
                           {isReportVideo(report.imageUrl) ? (
                             <button
@@ -458,16 +458,20 @@ export default function ReportArchive() {
                           </div>
                         </div>
                       </td>
-                      <td>
+                      <td className="col-status">
                         <span className={`status-badge ${report.statusClass}`}>
                           {report.status}
                         </span>
                       </td>
-                      <td className="archive-date-cell">{report.dateSubmitted}</td>
-                      <td className="archive-date-cell">
-                        {report.updatedAt ? formatDate(report.updatedAt) : report.dateSubmitted}
+                      <td className="archive-date-cell col-reported">
+                        <span className="archive-mobile-date-label">Reported: </span>
+                        <span>{report.dateSubmitted}</span>
                       </td>
-                      <td style={{ textAlign: 'center' }}>
+                      <td className="archive-date-cell col-updated">
+                        <span className="archive-mobile-date-label">Updated: </span>
+                        <span>{report.updatedAt ? formatDate(report.updatedAt) : report.dateSubmitted}</span>
+                      </td>
+                      <td className="col-actions" style={{ textAlign: 'center' }}>
                         <button
                           className="archive-btn-view"
                           onClick={() => handleOpenEdit(report)}

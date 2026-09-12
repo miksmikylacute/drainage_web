@@ -50,65 +50,86 @@ function LoginDialog({ dialog, onClose }) {
   );
 }
 
-function ForgotPasswordModal({ isOpen, initialEmail, onClose, onSubmit, isSubmitting }) {
-  const [email, setEmail] = useState(initialEmail || '');
+function ForgotPasswordModal({ isOpen, onClose, onSubmit, isSubmitting }) {
+  const [email, setEmail] = useState('');
 
   if (!isOpen) return null;
 
+  const handleClose = () => {
+    setEmail('');
+    onClose();
+  };
+
+  const handleFormSubmit = (e) => {
+    e.preventDefault();
+    if (email.trim() && !isSubmitting) {
+      onSubmit(email.trim());
+      setEmail('');
+    }
+  };
+
   return (
-    <div className="login-dialog-backdrop" role="presentation">
-      <div className="login-dialog" role="dialog" aria-modal="true" style={{ maxWidth: '400px' }}>
-        <h2 style={{ fontSize: '18px', fontWeight: '700', marginBottom: '8px' }}>Reset Password</h2>
+    <div className="login-dialog-backdrop" role="presentation" onClick={handleClose}>
+      <div
+        className="login-dialog"
+        role="dialog"
+        aria-modal="true"
+        style={{ maxWidth: '400px' }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <h2 style={{ fontSize: '18px', fontWeight: '700', marginBottom: '8px' }}>Forgot Password</h2>
         <p style={{ fontSize: '13px', color: '#64748b', marginBottom: '16px' }}>
           Enter your registered email address to receive a password reset link.
         </p>
-        <div className="input-group" style={{ marginBottom: '16px' }}>
-          <span className="input-prefix-icon">
-            <Mail size={18} />
-          </span>
-          <input
-            type="email"
-            placeholder="Registered Email"
-            className="input-field"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            autoFocus
-          />
-        </div>
-        <div style={{ display: 'flex', gap: '10px', justifyContent: 'center' }}>
-          <button
-            type="button"
-            onClick={onClose}
-            style={{
-              backgroundColor: '#e2e8f0',
-              color: '#334155',
-              padding: '10px 18px',
-              borderRadius: '8px',
-              border: 'none',
-              fontWeight: '600',
-              cursor: 'pointer',
-            }}
-          >
-            Cancel
-          </button>
-          <button
-            type="button"
-            disabled={isSubmitting || !email.trim()}
-            onClick={() => onSubmit(email.trim())}
-            style={{
-              backgroundColor: '#2196F3',
-              color: 'white',
-              padding: '10px 18px',
-              borderRadius: '8px',
-              border: 'none',
-              fontWeight: '600',
-              cursor: isSubmitting || !email.trim() ? 'not-allowed' : 'pointer',
-              opacity: isSubmitting ? 0.7 : 1,
-            }}
-          >
-            {isSubmitting ? 'Sending...' : 'Send Link'}
-          </button>
-        </div>
+        <form onSubmit={handleFormSubmit}>
+          <div className="input-group" style={{ marginBottom: '16px' }}>
+            <span className="input-prefix-icon">
+              <Mail size={18} />
+            </span>
+            <input
+              type="email"
+              placeholder="name@example.com"
+              className="input-field"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              autoFocus
+              required
+            />
+          </div>
+          <div style={{ display: 'flex', gap: '10px', justifyContent: 'center' }}>
+            <button
+              type="button"
+              onClick={onClose}
+              style={{
+                backgroundColor: '#e2e8f0',
+                color: '#334155',
+                padding: '10px 18px',
+                borderRadius: '8px',
+                border: 'none',
+                fontWeight: '600',
+                cursor: 'pointer',
+              }}
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={isSubmitting || !email.trim()}
+              style={{
+                backgroundColor: '#2196F3',
+                color: 'white',
+                padding: '10px 18px',
+                borderRadius: '8px',
+                border: 'none',
+                fontWeight: '600',
+                cursor: isSubmitting || !email.trim() ? 'not-allowed' : 'pointer',
+                opacity: isSubmitting ? 0.7 : 1,
+              }}
+            >
+              {isSubmitting ? 'Sending...' : 'Send Link'}
+            </button>
+          </div>
+        </form>
       </div>
     </div>
   );
@@ -181,19 +202,15 @@ export default function Login() {
 
   const onForgotPasswordClick = (e) => {
     e.preventDefault();
-    if (username.trim()) {
-      handleSendResetLink(username.trim());
-    } else {
-      setForgotModalOpen(true);
-    }
+    setForgotModalOpen(true);
   };
 
   return (
     <div className="login-container">
       <LoginDialog dialog={dialog} onClose={() => setDialog(null)} />
       <ForgotPasswordModal
+        key={forgotModalOpen ? 'open' : 'closed'}
         isOpen={forgotModalOpen}
-        initialEmail={username.trim()}
         onClose={() => setForgotModalOpen(false)}
         onSubmit={handleSendResetLink}
         isSubmitting={isSendingReset}

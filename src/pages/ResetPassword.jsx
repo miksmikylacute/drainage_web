@@ -50,16 +50,51 @@ export default function ResetPassword() {
   useEffect(() => {
     let isMounted = true;
 
-    // Check existing session
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    const initRecoverySession = async () => {
+      try {
+        const params = new URLSearchParams(window.location.search);
+        const tokenHash = params.get('token_hash') || params.get('token');
+        const type = params.get('type') || 'recovery';
+
+        // 1. Check if URL has token_hash parameter (?token_hash=...)
+        if (tokenHash) {
+          const { data, error: otpError } = await supabase.auth.verifyOtp({
+            token_hash: tokenHash,
+            type: type === 'signup' ? 'signup' : 'recovery',
+          });
+          if (!otpError && data?.session && isMounted) {
+            setHasSession(true);
+            setCheckingSession(false);
+            return;
+          }
+        }
+
+        // 2. Check if URL has PKCE code parameter (?code=...)
+        const code = params.get('code');
+        if (code) {
+          const { data, error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
+          if (!exchangeError && data?.session && isMounted) {
+            setHasSession(true);
+            setCheckingSession(false);
+            return;
+          }
+        }
+      } catch (err) {
+        console.warn('Recovery session init warning:', err);
+      }
+
+      // 3. Check existing session (or hash tokens #access_token=...)
+      const { data: { session } } = await supabase.auth.getSession();
       if (!isMounted) return;
       if (session) {
         setHasSession(true);
       }
       setCheckingSession(false);
-    });
+    };
 
-    // Listen for auth state change from email reset link redirect
+    initRecoverySession();
+
+    // 3. Listen for auth state change from email reset link redirect
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       if (!isMounted) return;
       if (event === 'PASSWORD_RECOVERY' || (session && event === 'SIGNED_IN')) {
