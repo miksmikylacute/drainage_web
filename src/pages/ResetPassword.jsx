@@ -1,9 +1,8 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useApp } from '../context/useApp';
-import { supabase } from '../lib/supabaseClient';
 import '../css/login.css';
-import { Lock, Eye, EyeOff, CheckCircle, ArrowLeft } from 'lucide-react';
+import { Lock, Eye, EyeOff, CheckCircle, ArrowLeft, Mail, KeyRound } from 'lucide-react';
 import drainageLogo from '../assets/drainage_clean.png';
 
 function ResetPasswordDialog({ dialog, onClose }) {
@@ -32,97 +31,22 @@ function ResetPasswordDialog({ dialog, onClose }) {
 }
 
 export default function ResetPassword() {
+  const [step, setStep] = useState(1); // 1 = Request 6-digit OTP, 2 = Enter OTP & Set New Password
+  const [email, setEmail] = useState('');
+  const [otpCode, setOtpCode] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
-  const [hasSession, setHasSession] = useState(false);
-  const [checkingSession, setCheckingSession] = useState(true);
-
-  const [error, setError] = useState('');
+  const [step1Error, setStep1Error] = useState('');
+  const [step1Success, setStep1Success] = useState('');
+  const [step2Error, setStep2Error] = useState('');
   const [dialog, setDialog] = useState(null);
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
 
-  const { updatePassword } = useApp();
+  const { resetPassword, verifyOtpAndResetPassword } = useApp();
   const navigate = useNavigate();
-
-  const [accountEmail, setAccountEmail] = useState('');
-
-  useEffect(() => {
-    let isMounted = true;
-
-    const initRecoverySession = async () => {
-      try {
-        const params = new URLSearchParams(window.location.search);
-        const tokenHash = params.get('token_hash') || params.get('token');
-        const type = params.get('type') || 'recovery';
-
-        // 1. Check if URL has token_hash parameter (?token_hash=...)
-        if (tokenHash) {
-          const { data, error: otpError } = await supabase.auth.verifyOtp({
-            token_hash: tokenHash,
-            type: type === 'signup' ? 'signup' : 'recovery',
-          });
-          if (!otpError && data?.session && isMounted) {
-            setHasSession(true);
-            setAccountEmail(data.session.user?.email || '');
-            setCheckingSession(false);
-            return;
-          }
-        }
-
-        // 2. Check if URL has PKCE code parameter (?code=...)
-        const code = params.get('code');
-        if (code) {
-          const { data, error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
-          if (!exchangeError && data?.session && isMounted) {
-            setHasSession(true);
-            setAccountEmail(data.session.user?.email || '');
-            setCheckingSession(false);
-            return;
-          }
-        }
-      } catch (err) {
-        console.warn('Recovery session init warning:', err);
-      }
-
-      // 3. Only recognize existing session if URL hash contains an access token or recovery type
-      const hasHashToken =
-        typeof window !== 'undefined' &&
-        (window.location.hash.includes('access_token') || window.location.hash.includes('type=recovery'));
-
-      if (hasHashToken) {
-        const { data: { session } } = await supabase.auth.getSession();
-        if (!isMounted) return;
-        if (session) {
-          setHasSession(true);
-          setAccountEmail(session.user?.email || '');
-        }
-      }
-
-      if (isMounted) {
-        setCheckingSession(false);
-      }
-    };
-
-    initRecoverySession();
-
-    // 4. Listen for auth state change from email reset link redirect
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      if (!isMounted) return;
-      if (event === 'PASSWORD_RECOVERY') {
-        setHasSession(true);
-        setAccountEmail(session?.user?.email || '');
-        setCheckingSession(false);
-      }
-    });
-
-    return () => {
-      isMounted = false;
-      subscription?.unsubscribe();
-    };
-  }, []);
 
   // Password requirements
   const hasMinLength = password.length >= 8;
@@ -132,50 +56,88 @@ export default function ResetPassword() {
   const hasSymbol = /[!@#$%^&*(),.?":{}|<>]/.test(password);
   const isPasswordStrong = hasMinLength && hasUpperCase && hasLowerCase && hasNumber && hasSymbol;
 
-  const handleSubmit = async (e) => {
+  // Step 1: Request 6-digit verification code
+  const handleSendCode = async (e) => {
+    if (e) e.preventDefault();
+    setStep1Error('');
+    setStep1Success('');
+
+    const cleanEmail = email.trim().toLowerCase();
+    if (!cleanEmail) {
+      setStep1Error('Please enter your account email address.');
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      await resetPassword(cleanEmail);
+      setStep1Success('Verification code sent! Please check your email.');
+      setStep(2);
+    } catch (err) {
+      setStep1Error(err?.message || 'Could not send verification code. Please try again.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Step 2: Verify OTP and update password
+  const handleResetPassword = async (e) => {
     e.preventDefault();
-    setError('');
+    setStep2Error('');
+
+    const cleanEmail = email.trim().toLowerCase();
+    const cleanOtp = otpCode.trim();
+
+    if (!cleanEmail) {
+      setStep2Error('Please enter your account email address.');
+      return;
+    }
+
+    if (!cleanOtp || cleanOtp.length < 6) {
+      setStep2Error('Please enter the verification code sent to your email.');
+      return;
+    }
 
     if (!isPasswordStrong) {
-      setError('Please fulfill all password requirements below.');
+      setStep2Error('Please fulfill all password requirements below.');
       return;
     }
 
     if (password !== confirmPassword) {
-      setError('Passwords do not match.');
+      setStep2Error('Passwords do not match.');
       return;
     }
 
-    setIsSubmitting(true);
-
+    setIsLoading(true);
     try {
-      await updatePassword(password);
-      // Crucial: Sign out of recovery session so lingering session does not block login
-      await supabase.auth.signOut();
+      await verifyOtpAndResetPassword({
+        email: cleanEmail,
+        token: cleanOtp,
+        newPassword: password,
+      });
 
       setDialog({
         type: 'success',
         title: 'Password Changed Successfully',
-        message: accountEmail
-          ? `The password for ${accountEmail} has been updated. You can now log in with your new password.`
-          : 'Your password has been updated. You can now log in with your new password.',
+        message: `The password for ${cleanEmail} has been updated. You can now log in with your new password.`,
         buttonText: 'Proceed to Login',
         onConfirm: () => navigate('/'),
       });
     } catch (err) {
       const msg = String(err?.message || err || '').toLowerCase();
       let friendlyMessage = 'We could not update your password. Please try again.';
-      if (msg.includes('same password') || msg.includes('different')) {
+
+      if (msg.includes('invalid') || msg.includes('token') || msg.includes('otp')) {
+        friendlyMessage = 'The verification code is invalid or has expired. Please check your email or request a new code.';
+      } else if (msg.includes('different') || msg.includes('same password')) {
         friendlyMessage = 'Your new password should be different from your old password.';
+      } else if (err?.message) {
+        friendlyMessage = err.message;
       }
-      setDialog({
-        type: 'error',
-        title: 'Update Failed',
-        message: friendlyMessage,
-        buttonText: 'OK',
-      });
+
+      setStep2Error(friendlyMessage);
     } finally {
-      setIsSubmitting(false);
+      setIsLoading(false);
     }
   };
 
@@ -186,54 +148,20 @@ export default function ResetPassword() {
       <div className="login-card">
         <div className="login-header">
           <img src={drainageLogo} alt="DrainAlert" className="login-logo" />
-          <h1 className="login-title">Set New Password</h1>
+          <h1 className="login-title">
+            {step === 1 ? 'Forgot Password' : 'Reset Password'}
+          </h1>
           <p className="login-subtitle">
-            {accountEmail ? (
-              <>Resetting password for <strong style={{ color: '#0f172a' }}>{accountEmail}</strong></>
-            ) : (
-              'Enter your new password below to update your account.'
-            )}
+            {step === 1
+              ? 'Enter your registered email to receive a verification code.'
+              : `Enter the verification code sent to ${email || 'your email'} and set your new password.`}
           </p>
         </div>
 
-        {checkingSession ? (
-          <div style={{ color: '#64748b', fontSize: '14px', padding: '24px 0' }}>
-            Verifying password reset link...
-          </div>
-        ) : !hasSession ? (
-          <div style={{ padding: '20px 0' }}>
-            <div
-              style={{
-                color: '#ef4444',
-                fontSize: '14px',
-                fontWeight: '500',
-                backgroundColor: '#fee2e2',
-                padding: '14px',
-                borderRadius: '10px',
-                marginBottom: '20px',
-                lineHeight: '1.5',
-              }}
-            >
-              No active password reset link found or the link has expired. Please request a new link from the login page.
-            </div>
-            <Link
-              to="/"
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '6px',
-                color: '#2196F3',
-                fontSize: '14px',
-                textDecoration: 'none',
-                fontWeight: '600',
-              }}
-            >
-              <ArrowLeft size={16} /> Back to Login
-            </Link>
-          </div>
-        ) : (
-          <form onSubmit={handleSubmit} className="login-form">
-            {error && (
+        {/* ===================== STEP 1: REQUEST CODE ===================== */}
+        {step === 1 && (
+          <form onSubmit={handleSendCode} className="login-form">
+            {step1Error && (
               <div
                 style={{
                   color: '#ef4444',
@@ -245,9 +173,146 @@ export default function ResetPassword() {
                   borderRadius: '8px',
                 }}
               >
-                {error}
+                {step1Error}
               </div>
             )}
+            {step1Success && (
+              <div
+                style={{
+                  color: '#15803d',
+                  fontSize: '13px',
+                  fontWeight: '600',
+                  textAlign: 'left',
+                  backgroundColor: '#dcfce7',
+                  padding: '10px 14px',
+                  borderRadius: '8px',
+                }}
+              >
+                {step1Success}
+              </div>
+            )}
+
+            <div className="input-group">
+              <span className="input-prefix-icon">
+                <Mail size={18} />
+              </span>
+              <input
+                type="email"
+                placeholder="Registered Email"
+                className="input-field"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                autoFocus
+                required
+              />
+            </div>
+
+            <button
+              type="submit"
+              className="login-btn"
+              disabled={isLoading}
+              style={{
+                backgroundColor: '#2196F3',
+                color: 'white',
+                fontWeight: '600',
+                padding: '14px',
+                borderRadius: '12px',
+                border: 'none',
+                cursor: isLoading ? 'not-allowed' : 'pointer',
+                opacity: isLoading ? 0.7 : 1,
+              }}
+            >
+              {isLoading ? 'Sending Code...' : 'Send Verification Code'}
+            </button>
+
+            {/* Jump to step 2 if code already received */}
+            <div style={{ marginTop: '6px' }}>
+              <button
+                type="button"
+                onClick={() => setStep(2)}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  color: '#2196F3',
+                  fontSize: '13px',
+                  fontWeight: '600',
+                  cursor: 'pointer',
+                  textDecoration: 'underline',
+                }}
+              >
+                Already have a verification code? Enter it here
+              </button>
+            </div>
+
+            <div style={{ marginTop: '12px' }}>
+              <Link
+                to="/"
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  color: '#64748b',
+                  fontSize: '13px',
+                  textDecoration: 'none',
+                  fontWeight: '500',
+                }}
+              >
+                <ArrowLeft size={16} /> Back to Login
+              </Link>
+            </div>
+          </form>
+        )}
+
+        {/* ===================== STEP 2: ENTER OTP & NEW PASSWORD ===================== */}
+        {step === 2 && (
+          <form onSubmit={handleResetPassword} className="login-form">
+            {step2Error && (
+              <div
+                style={{
+                  color: '#ef4444',
+                  fontSize: '13px',
+                  fontWeight: '600',
+                  textAlign: 'left',
+                  backgroundColor: '#fee2e2',
+                  padding: '10px 14px',
+                  borderRadius: '8px',
+                }}
+              >
+                {step2Error}
+              </div>
+            )}
+
+            {/* Email Field */}
+            <div className="input-group">
+              <span className="input-prefix-icon">
+                <Mail size={18} />
+              </span>
+              <input
+                type="email"
+                placeholder="Registered Email"
+                className="input-field"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+              />
+            </div>
+
+            {/* Verification Code Field */}
+            <div className="input-group">
+              <span className="input-prefix-icon">
+                <KeyRound size={18} />
+              </span>
+              <input
+                type="text"
+                placeholder="Verification Code"
+                className="input-field"
+                value={otpCode}
+                maxLength={10}
+                onChange={(e) => setOtpCode(e.target.value.replace(/\s+/g, ''))}
+                required
+                style={{ letterSpacing: '4px', fontWeight: '700', fontSize: '16px' }}
+              />
+            </div>
 
             {/* New Password Field */}
             <div className="input-group">
@@ -333,7 +398,7 @@ export default function ResetPassword() {
             <button
               type="submit"
               className="login-btn"
-              disabled={isSubmitting}
+              disabled={isLoading}
               style={{
                 backgroundColor: '#2196F3',
                 color: 'white',
@@ -341,14 +406,47 @@ export default function ResetPassword() {
                 padding: '14px',
                 borderRadius: '12px',
                 border: 'none',
-                cursor: isSubmitting ? 'not-allowed' : 'pointer',
-                opacity: isSubmitting ? 0.7 : 1,
+                cursor: isLoading ? 'not-allowed' : 'pointer',
+                opacity: isLoading ? 0.7 : 1,
               }}
             >
-              {isSubmitting ? 'Updating Password...' : 'Update Password'}
+              {isLoading ? 'Updating Password...' : 'Update Password'}
             </button>
 
-            <div style={{ marginTop: '8px' }}>
+            {/* Step navigation links */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '6px' }}>
+              <button
+                type="button"
+                onClick={() => setStep(1)}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  color: '#64748b',
+                  fontSize: '12px',
+                  fontWeight: '500',
+                  cursor: 'pointer',
+                }}
+              >
+                Change Email
+              </button>
+              <button
+                type="button"
+                onClick={handleSendCode}
+                disabled={isLoading}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  color: '#2196F3',
+                  fontSize: '12px',
+                  fontWeight: '600',
+                  cursor: 'pointer',
+                }}
+              >
+                Resend Code
+              </button>
+            </div>
+
+            <div style={{ marginTop: '12px' }}>
               <Link
                 to="/"
                 style={{
