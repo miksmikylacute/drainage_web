@@ -51,11 +51,26 @@ export default function ResetPassword() {
     let isMounted = true;
 
     const initRecoverySession = async () => {
-      // 1. Check if URL has PKCE code parameter (?code=...)
       try {
         const params = new URLSearchParams(window.location.search);
-        const code = params.get('code');
+        const tokenHash = params.get('token_hash') || params.get('token');
+        const type = params.get('type') || 'recovery';
 
+        // 1. Check if URL has token_hash parameter (?token_hash=...)
+        if (tokenHash) {
+          const { data, error: otpError } = await supabase.auth.verifyOtp({
+            token_hash: tokenHash,
+            type: type === 'signup' ? 'signup' : 'recovery',
+          });
+          if (!otpError && data?.session && isMounted) {
+            setHasSession(true);
+            setCheckingSession(false);
+            return;
+          }
+        }
+
+        // 2. Check if URL has PKCE code parameter (?code=...)
+        const code = params.get('code');
         if (code) {
           const { data, error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
           if (!exchangeError && data?.session && isMounted) {
@@ -64,11 +79,11 @@ export default function ResetPassword() {
             return;
           }
         }
-      } catch {
-        // Fall through to getSession check
+      } catch (err) {
+        console.warn('Recovery session init warning:', err);
       }
 
-      // 2. Check existing session (or hash tokens)
+      // 3. Check existing session (or hash tokens #access_token=...)
       const { data: { session } } = await supabase.auth.getSession();
       if (!isMounted) return;
       if (session) {
