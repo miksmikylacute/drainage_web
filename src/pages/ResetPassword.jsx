@@ -47,6 +47,8 @@ export default function ResetPassword() {
   const { updatePassword } = useApp();
   const navigate = useNavigate();
 
+  const [accountEmail, setAccountEmail] = useState('');
+
   useEffect(() => {
     let isMounted = true;
 
@@ -64,6 +66,7 @@ export default function ResetPassword() {
           });
           if (!otpError && data?.session && isMounted) {
             setHasSession(true);
+            setAccountEmail(data.session.user?.email || '');
             setCheckingSession(false);
             return;
           }
@@ -75,6 +78,7 @@ export default function ResetPassword() {
           const { data, error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
           if (!exchangeError && data?.session && isMounted) {
             setHasSession(true);
+            setAccountEmail(data.session.user?.email || '');
             setCheckingSession(false);
             return;
           }
@@ -83,22 +87,33 @@ export default function ResetPassword() {
         console.warn('Recovery session init warning:', err);
       }
 
-      // 3. Check existing session (or hash tokens #access_token=...)
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!isMounted) return;
-      if (session) {
-        setHasSession(true);
+      // 3. Only recognize existing session if URL hash contains an access token or recovery type
+      const hasHashToken =
+        typeof window !== 'undefined' &&
+        (window.location.hash.includes('access_token') || window.location.hash.includes('type=recovery'));
+
+      if (hasHashToken) {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!isMounted) return;
+        if (session) {
+          setHasSession(true);
+          setAccountEmail(session.user?.email || '');
+        }
       }
-      setCheckingSession(false);
+
+      if (isMounted) {
+        setCheckingSession(false);
+      }
     };
 
     initRecoverySession();
 
-    // 3. Listen for auth state change from email reset link redirect
+    // 4. Listen for auth state change from email reset link redirect
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       if (!isMounted) return;
-      if (event === 'PASSWORD_RECOVERY' || (session && event === 'SIGNED_IN')) {
+      if (event === 'PASSWORD_RECOVERY') {
         setHasSession(true);
+        setAccountEmail(session?.user?.email || '');
         setCheckingSession(false);
       }
     });
@@ -135,10 +150,15 @@ export default function ResetPassword() {
 
     try {
       await updatePassword(password);
+      // Crucial: Sign out of recovery session so lingering session does not block login
+      await supabase.auth.signOut();
+
       setDialog({
         type: 'success',
         title: 'Password Changed Successfully',
-        message: 'Your password has been updated. You can now log in with your new password.',
+        message: accountEmail
+          ? `The password for ${accountEmail} has been updated. You can now log in with your new password.`
+          : 'Your password has been updated. You can now log in with your new password.',
         buttonText: 'Proceed to Login',
         onConfirm: () => navigate('/'),
       });
@@ -168,7 +188,11 @@ export default function ResetPassword() {
           <img src={drainageLogo} alt="DrainAlert" className="login-logo" />
           <h1 className="login-title">Set New Password</h1>
           <p className="login-subtitle">
-            Enter your new password below to update your account.
+            {accountEmail ? (
+              <>Resetting password for <strong style={{ color: '#0f172a' }}>{accountEmail}</strong></>
+            ) : (
+              'Enter your new password below to update your account.'
+            )}
           </p>
         </div>
 
