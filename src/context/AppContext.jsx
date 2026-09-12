@@ -616,6 +616,9 @@ export function AppProvider({ children }) {
       password: newPassword,
     });
     if (updateError) throw updateError;
+
+    // Sign out from temporary recovery session so user can log in cleanly
+    await supabase.auth.signOut();
   };
 
   const updateCurrentProfile = async ({ fullname, phone, avatarFile }) => {
