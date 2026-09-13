@@ -48,6 +48,22 @@
   margin-bottom: 6px;
 }
 
+.login-env-pill {
+  display: inline-flex;
+  align-items: center;
+  background-color: #fef3c7;
+  color: #b45309;
+  border: 1px solid #f59e0b;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  padding: 3px 10px;
+  border-radius: 9999px;
+  text-transform: uppercase;
+  margin: 4px auto 8px auto;
+  user-select: none;
+}
+
 .login-subtitle {
   font-size: 15px;
   color: var(--text-muted);

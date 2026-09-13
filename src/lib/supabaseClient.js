@@ -1,8 +1,10 @@
 import { createClient } from '@supabase/supabase-js';
 
-const fallbackSupabaseUrl = 'https://rttraruhalqrljnkaprj.supabase.co';
+export const isTestEnvironment = import.meta.env.VITE_APP_ENV === 'test';
+
+const fallbackSupabaseUrl = 'https://jpmodbgmkkrtavuzmpii.supabase.co';
 const fallbackSupabaseAnonKey =
-  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJ0dHJhcnVoYWxxcmxqbmthcHJqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODM2MDIwMTYsImV4cCI6MjA5OTE3ODAxNn0.Khfqx4CO3vFv3SSlSQ0KOk1sCMIvX3gCCjbVKGuyJyw';
+  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpwbW9kYmdta2tydGF2dXptcGlpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODkzMTM5NDgsImV4cCI6MjEwNDg4OTk0OH0.YPh7bLDA9Sx9DkQifJ7p_qSljjiD_YQZyYMu95CeFG4';
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || fallbackSupabaseUrl;
 const supabaseAnonKey =

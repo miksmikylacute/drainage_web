@@ -4,6 +4,7 @@ import { useApp } from '../context/useApp';
 import '../css/login.css';
 import { User, Lock, Eye, EyeOff } from 'lucide-react';
 import drainageLogo from '../assets/drainage_clean.png';
+import { isTestEnvironment } from '../lib/supabaseClient';
 
 function getFriendlyAuthMessage(error, fallback) {
   const message = String(error?.message || error || '').toLowerCase();
@@ -94,6 +95,11 @@ export default function Login() {
         <div className="login-header">
           <img src={drainageLogo} alt="DrainAlert" className="login-logo" />
           <h1 className="login-title">Admin Login</h1>
+          {isTestEnvironment && (
+            <div className="login-env-pill">
+              TEST ENVIRONMENT
+            </div>
+          )}
           <p className="login-subtitle">Please login to continue</p>
         </div>
 

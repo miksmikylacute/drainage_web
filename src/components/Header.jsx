@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Bell, Camera, CheckCheck, Menu, User, X } from 'lucide-react';
 import { useApp } from '../context/useApp';
+import { isTestEnvironment } from '../lib/supabaseClient';
 
 export default function Header({ onToggleMobileMenu }) {
   const location = useLocation();
@@ -140,7 +141,14 @@ export default function Header({ onToggleMobileMenu }) {
           </button>
         )}
         <div className="header-title-group">
-          <h2 className="header-title">{getTitle(location.pathname)}</h2>
+          <div className="header-title-row">
+            <h2 className="header-title">{getTitle(location.pathname)}</h2>
+            {isTestEnvironment && (
+              <span className="env-pill-badge" title="Running in Test Database Mode">
+                TEST ENV
+              </span>
+            )}
+          </div>
           <p className="header-subtitle">{getSubtitle(location.pathname)}</p>
         </div>
       </div>
