@@ -29,9 +29,10 @@ export default function App() {
       <BrowserRouter>
         <Routes>
           {/* Landing / Root is Login Page */}
+          {/* Copy */}
           <Route path="/" element={<Login />} />
           <Route path="/reset-password" element={<ResetPassword />} />
-          
+
           {/* Main Dashboard Layout wrapper */}
           <Route element={<ProtectedLayout />}>
             <Route path="/dashboard" element={<Dashboard />} />
@@ -42,7 +43,7 @@ export default function App() {
             <Route path="/notifications" element={<Notifications />} />
             <Route path="/hotlines" element={<Hotlines />} />
           </Route>
-          
+
           {/* Catch-all redirect to Login */}
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
