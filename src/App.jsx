@@ -27,8 +27,9 @@ export default function App() {
         <Routes>
           {/* Landing / Root is Login Page */}
           <Route path="/" element={<Login />} />
-          
+
           {/* Main Dashboard Layout wrapper */}
+          {/* Main Copy */}
           <Route element={<ProtectedLayout />}>
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/reports" element={<Reports />} />
@@ -36,7 +37,7 @@ export default function App() {
             <Route path="/residents" element={<Residents />} />
             <Route path="/notifications" element={<Notifications />} />
           </Route>
-          
+
           {/* Catch-all redirect to Login */}
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
