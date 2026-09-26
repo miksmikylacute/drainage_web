@@ -55,6 +55,163 @@
   flex-shrink: 0;
 }
 
+/* ─── Interactive Status Filter Group ────────────────────────── */
+
+.map-filter-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.map-filter-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: #ffffff;
+  border: 1.5px solid #e2e8f0;
+  color: #475569;
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  user-select: none;
+  outline: none;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+}
+
+.map-filter-btn:hover {
+  border-color: #cbd5e1;
+  color: #1e293b;
+  transform: translateY(-1px);
+  box-shadow: 0 3px 6px rgba(0, 0, 0, 0.06);
+}
+
+.map-filter-btn:active {
+  transform: translateY(0);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+}
+
+.map-filter-btn:focus-visible {
+  outline: 2px solid #0284c7;
+  outline-offset: 2px;
+}
+
+/* Active states */
+.map-filter-btn.active {
+  font-weight: 700;
+  color: #0f172a;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+/* All button active */
+.map-filter-btn.active.all-active {
+  background: #f8fafc;
+  border-color: #0284c7;
+  color: #0369a1;
+}
+
+.map-filter-btn.active.all-active .map-filter-count {
+  background: #e0f2fe;
+  color: #0369a1;
+}
+
+/* Status-specific active styling */
+.map-filter-btn.active.status-pending {
+  background: #fffbeb;
+  border-color: #f59e0b;
+  color: #b45309;
+}
+
+.map-filter-btn.active.status-pending .map-filter-count {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.map-filter-btn.active.status-inprogress {
+  background: #eff6ff;
+  border-color: #3b82f6;
+  color: #1d4ed8;
+}
+
+.map-filter-btn.active.status-inprogress .map-filter-count {
+  background: #dbeafe;
+  color: #1e40af;
+}
+
+.map-filter-btn.active.status-resolved {
+  background: #f0fdf4;
+  border-color: #22c55e;
+  color: #15803d;
+}
+
+.map-filter-btn.active.status-resolved .map-filter-count {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.map-filter-btn.active.status-rejected {
+  background: #fef2f2;
+  border-color: #ef4444;
+  color: #b91c1c;
+}
+
+.map-filter-btn.active.status-rejected .map-filter-count {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+/* Inactive states */
+.map-filter-btn.inactive {
+  background: #f8fafc;
+  border-color: #e2e8f0;
+  color: #94a3b8;
+  opacity: 0.65;
+}
+
+.map-filter-btn.inactive:hover {
+  opacity: 0.95;
+  background: #ffffff;
+  border-color: #cbd5e1;
+  color: #64748b;
+}
+
+.map-filter-btn.inactive .map-filter-count {
+  background: #f1f5f9;
+  color: #94a3b8;
+}
+
+/* Inner elements */
+.map-filter-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  transition: background-color 0.2s ease;
+}
+
+.map-filter-label {
+  line-height: 1;
+}
+
+.map-filter-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 19px;
+  height: 19px;
+  padding: 0 5px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  background: #f1f5f9;
+  color: #64748b;
+  transition: all 0.2s ease;
+}
+
+
 /* ─── Leaflet Card Wrapper ────────────────────────────────────── */
 
 .map-leaflet-card {
@@ -329,6 +486,24 @@
     flex-direction: column;
     align-items: flex-start;
     gap: 12px;
+  }
+
+  .map-filter-group {
+    gap: 6px;
+    width: 100%;
+  }
+
+  .map-filter-btn {
+    font-size: 11.5px;
+    padding: 5px 9px;
+    gap: 5px;
+  }
+
+  .map-filter-count {
+    min-width: 17px;
+    height: 17px;
+    font-size: 10px;
+    padding: 0 4px;
   }
 
   .map-legend {

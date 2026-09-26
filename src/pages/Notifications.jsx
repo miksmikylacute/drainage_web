@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { useApp } from '../context/useApp';
 import { Search, X, Send, Users } from 'lucide-react';
+import ConfirmModal from '../components/ConfirmModal';
 import '../css/notifications.css';
 
 export default function Notifications() {
@@ -10,6 +11,40 @@ export default function Notifications() {
   const [message, setMessage] = useState('');
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [sending, setSending] = useState(false);
+
+  // Confirmation Modal State
+  const [confirmModal, setConfirmModal] = useState({
+    isOpen: false,
+    title: '',
+    message: '',
+    confirmText: 'Confirm',
+    cancelText: 'Cancel',
+    variant: 'primary',
+    isProcessing: false,
+    onConfirm: () => {},
+  });
+
+  const confirmAction = ({ title, message, confirmText = 'Confirm', variant = 'primary', action }) => {
+    setConfirmModal({
+      isOpen: true,
+      title,
+      message,
+      confirmText,
+      cancelText: 'Cancel',
+      variant,
+      isProcessing: false,
+      onConfirm: async () => {
+        setConfirmModal((prev) => ({ ...prev, isProcessing: true }));
+        try {
+          await action();
+          setConfirmModal((prev) => ({ ...prev, isOpen: false, isProcessing: false }));
+        } catch (err) {
+          setConfirmModal((prev) => ({ ...prev, isProcessing: false }));
+          alert(err.message || 'Operation failed.');
+        }
+      },
+    });
+  };
 
   // Eligible residents who can receive notifications (residents that are not disabled)
   const eligibleResidents = useMemo(() => {
@@ -63,7 +98,7 @@ export default function Notifications() {
     setShowSuggestions(false);
   };
 
-  const handleSend = async (e) => {
+  const handleSend = (e) => {
     e.preventDefault();
     if (selectedResidents.length === 0) {
       alert('Please select at least one resident to receive the notification.');
@@ -74,22 +109,28 @@ export default function Notifications() {
       return;
     }
 
-    setSending(true);
-    try {
-      await sendNotification(selectedResidents.map((resident) => resident.id), message.trim());
-      const recipientCount = selectedResidents.length;
-      if (recipientCount > 3) {
-        alert(`Notification sent successfully to all ${recipientCount} selected residents!`);
-      } else {
-        const recipientNames = selectedResidents.map((r) => r.name).join(', ');
-        alert(`Notification saved for:\n${recipientNames}`);
-      }
-      handleCancel();
-    } catch (sendError) {
-      alert(sendError.message || 'Unable to send notification.');
-    } finally {
-      setSending(false);
-    }
+    const count = selectedResidents.length;
+    confirmAction({
+      title: 'Confirm Broadcast Notification',
+      message: `Are you sure you want to send this notification to ${count} selected resident${count > 1 ? 's' : ''}?`,
+      confirmText: 'Send Notification',
+      variant: 'primary',
+      action: async () => {
+        setSending(true);
+        try {
+          await sendNotification(selectedResidents.map((resident) => resident.id), message.trim());
+          if (count > 3) {
+            alert(`Notification sent successfully to all ${count} selected residents!`);
+          } else {
+            const recipientNames = selectedResidents.map((r) => r.name).join(', ');
+            alert(`Notification saved for:\n${recipientNames}`);
+          }
+          handleCancel();
+        } finally {
+          setSending(false);
+        }
+      },
+    });
   };
 
   return (
@@ -226,6 +267,19 @@ export default function Notifications() {
           </button>
         </div>
       </div>
+
+      {/* Reusable Confirm Modal */}
+      <ConfirmModal
+        isOpen={confirmModal.isOpen}
+        title={confirmModal.title}
+        message={confirmModal.message}
+        confirmText={confirmModal.confirmText}
+        cancelText={confirmModal.cancelText}
+        variant={confirmModal.variant}
+        isProcessing={confirmModal.isProcessing}
+        onConfirm={confirmModal.onConfirm}
+        onCancel={() => setConfirmModal((prev) => ({ ...prev, isOpen: false }))}
+      />
     </div>
   );
 }

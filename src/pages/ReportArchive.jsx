@@ -2,8 +2,9 @@ import { useEffect, useState, useMemo } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { useApp } from '../context/useApp';
 import {
-  Search, X, Calendar, Filter, Eye, ChevronLeft, ChevronRight, Trash2, Info, ChevronDown, Download
+  Search, X, Calendar, Filter, Eye, ChevronLeft, ChevronRight, Trash2, Info, ChevronDown, Download, ExternalLink
 } from 'lucide-react';
+import ConfirmModal from '../components/ConfirmModal';
 import cloggedDrainImg from '../assets/clogged_drain.png';
 import { isReportVisibleOnMap } from '../lib/reportMapMarkers';
 import { isReportArchived } from '../lib/reportArchiveRules';
@@ -86,6 +87,40 @@ export default function ReportArchive() {
   const [statusVal, setStatusVal] = useState('');
   const [showRemarksPopup, setShowRemarksPopup] = useState(false);
   const [showImagePopup, setShowImagePopup] = useState(false);
+
+  // Confirmation Modal State
+  const [confirmModal, setConfirmModal] = useState({
+    isOpen: false,
+    title: '',
+    message: '',
+    confirmText: 'Confirm',
+    cancelText: 'Cancel',
+    variant: 'primary',
+    isProcessing: false,
+    onConfirm: () => {},
+  });
+
+  const confirmAction = ({ title, message, confirmText = 'Confirm', variant = 'primary', action }) => {
+    setConfirmModal({
+      isOpen: true,
+      title,
+      message,
+      confirmText,
+      cancelText: 'Cancel',
+      variant,
+      isProcessing: false,
+      onConfirm: async () => {
+        setConfirmModal((prev) => ({ ...prev, isProcessing: true }));
+        try {
+          await action();
+          setConfirmModal((prev) => ({ ...prev, isOpen: false, isProcessing: false }));
+        } catch (err) {
+          setConfirmModal((prev) => ({ ...prev, isProcessing: false }));
+          alert(err.message || 'Operation failed.');
+        }
+      },
+    });
+  };
 
   const currentEditingReport = editingReport
     ? reports.find((report) => report.id === editingReport.id) || editingReport
@@ -187,12 +222,7 @@ export default function ReportArchive() {
     resetToFirstPage();
   };
 
-  const handleExportExcel = () => {
-    if (!filteredReports || filteredReports.length === 0) {
-      alert('No reports match the selected filters to export.');
-      return;
-    }
-
+  const executeExportExcel = () => {
     const headers = [
       'Report ID',
       'Title / Issue',
@@ -240,6 +270,23 @@ export default function ReportArchive() {
     URL.revokeObjectURL(url);
   };
 
+  const handleExportExcel = () => {
+    if (!filteredReports || filteredReports.length === 0) {
+      alert('No reports match the selected filters to export.');
+      return;
+    }
+
+    confirmAction({
+      title: 'Export Archived Reports',
+      message: `Do you want to export ${filteredReports.length} archived report${filteredReports.length > 1 ? 's' : ''} to an Excel-compatible CSV file?`,
+      confirmText: 'Export File',
+      variant: 'primary',
+      action: async () => {
+        executeExportExcel();
+      },
+    });
+  };
+
   const handleOpenEdit = (report) => {
     setEditingReport(report);
     setRemarks(report.remarks || '');
@@ -266,20 +313,21 @@ export default function ReportArchive() {
     }
   };
 
-  const handleDeleteReport = async () => {
+  const handleDeleteReport = () => {
     if (!currentEditingReport) return;
-    const shouldDelete = window.confirm(
-      `Delete ${currentEditingReport.displayId}? This will permanently remove the report from the database, resident mobile app, report timeline, notifications, remarks, and admin map.`
-    );
-    if (!shouldDelete) return;
-    try {
-      await deleteReport(currentEditingReport.id);
-      setShowRemarksPopup(false);
-      setShowImagePopup(false);
-      setEditingReport(null);
-    } catch (deleteError) {
-      alert(deleteError.message || 'Unable to delete report.');
-    }
+
+    confirmAction({
+      title: 'Permanently Delete Report',
+      message: `Delete ${currentEditingReport.displayId}? This will permanently remove the report from the database, resident mobile app, report timeline, notifications, remarks, and admin map. This action cannot be undone.`,
+      confirmText: 'Delete Report',
+      variant: 'danger',
+      action: async () => {
+        await deleteReport(currentEditingReport.id);
+        setShowRemarksPopup(false);
+        setShowImagePopup(false);
+        setEditingReport(null);
+      },
+    });
   };
 
   return (
@@ -573,16 +621,20 @@ export default function ReportArchive() {
                 </div> */ }
                 <div className="report-detail-row">
                   <span className="report-detail-label">Location</span>
-                  {isReportVisibleOnMap(currentEditingReport) ? (
-                    <span
-                      className="report-detail-value location-link"
-                      onClick={() => navigate(`/map?focus=${currentEditingReport.id}`)}
-                    >
-                      {currentEditingReport.location}
-                    </span>
-                  ) : (
+                  <div className="report-location-wrap">
                     <span className="report-detail-value">{currentEditingReport.location}</span>
-                  )}
+                    {isReportVisibleOnMap(currentEditingReport) && (
+                      <button
+                        type="button"
+                        className="location-view-map-btn"
+                        onClick={() => navigate(`/map?focus=${currentEditingReport.id}`)}
+                        title="View on Map"
+                      >
+                        <span>View on Map</span>
+                        <ExternalLink size={12} />
+                      </button>
+                    )}
+                  </div>
                 </div>
                 <div className="report-detail-row">
                   <span className="report-detail-label">Coordinates</span>
@@ -793,6 +845,19 @@ export default function ReportArchive() {
           )}
         </div>
       )}
+
+      {/* Reusable Confirm Modal */}
+      <ConfirmModal
+        isOpen={confirmModal.isOpen}
+        title={confirmModal.title}
+        message={confirmModal.message}
+        confirmText={confirmModal.confirmText}
+        cancelText={confirmModal.cancelText}
+        variant={confirmModal.variant}
+        isProcessing={confirmModal.isProcessing}
+        onConfirm={confirmModal.onConfirm}
+        onCancel={() => setConfirmModal((prev) => ({ ...prev, isOpen: false }))}
+      />
     </div>
   );
 }

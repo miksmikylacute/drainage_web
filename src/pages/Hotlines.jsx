@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { Edit, Plus, Search, Trash2, X } from 'lucide-react';
 import { useApp } from '../context/useApp';
+import ConfirmModal from '../components/ConfirmModal';
 import '../css/hotlines.css';
 
 const EMPTY_FORM = {
@@ -19,6 +20,40 @@ export default function Hotlines() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [form, setForm] = useState(EMPTY_FORM);
   const [isSaving, setIsSaving] = useState(false);
+
+  // Confirmation Modal State
+  const [confirmModal, setConfirmModal] = useState({
+    isOpen: false,
+    title: '',
+    message: '',
+    confirmText: 'Confirm',
+    cancelText: 'Cancel',
+    variant: 'primary',
+    isProcessing: false,
+    onConfirm: () => {},
+  });
+
+  const confirmAction = ({ title, message, confirmText = 'Confirm', variant = 'primary', action }) => {
+    setConfirmModal({
+      isOpen: true,
+      title,
+      message,
+      confirmText,
+      cancelText: 'Cancel',
+      variant,
+      isProcessing: false,
+      onConfirm: async () => {
+        setConfirmModal((prev) => ({ ...prev, isProcessing: true }));
+        try {
+          await action();
+          setConfirmModal((prev) => ({ ...prev, isOpen: false, isProcessing: false }));
+        } catch (err) {
+          setConfirmModal((prev) => ({ ...prev, isProcessing: false }));
+          alert(err.message || 'Operation failed.');
+        }
+      },
+    });
+  };
 
   const filteredHotlines = useMemo(() => {
     const query = searchQuery.trim().toLowerCase();
@@ -57,31 +92,41 @@ export default function Hotlines() {
     setForm(EMPTY_FORM);
   };
 
-  const handleSubmit = async (event) => {
+  const handleSubmit = (event) => {
     event.preventDefault();
-    setIsSaving(true);
-
-    try {
-      await saveHotline(form);
-      closeModal();
-    } catch (saveError) {
-      alert(saveError.message || 'Unable to save hotline.');
-    } finally {
-      setIsSaving(false);
+    if (!form.name.trim() || !form.phoneNumber.trim()) {
+      alert('Please fill out all required fields.');
+      return;
     }
+
+    const isEditing = Boolean(form.id);
+    confirmAction({
+      title: isEditing ? 'Confirm Update Hotline' : 'Confirm Add Hotline',
+      message: `Are you sure you want to ${isEditing ? 'update' : 'add'} the hotline for "${form.name.trim()}" (${form.phoneNumber.trim()})?`,
+      confirmText: isEditing ? 'Update Hotline' : 'Add Hotline',
+      variant: 'primary',
+      action: async () => {
+        setIsSaving(true);
+        try {
+          await saveHotline(form);
+          closeModal();
+        } finally {
+          setIsSaving(false);
+        }
+      },
+    });
   };
 
-  const handleDelete = async (hotline) => {
-    const shouldDelete = window.confirm(
-      `Are you sure, you want to Delete ${hotline.name}?`
-    );
-    if (!shouldDelete) return;
-
-    try {
-      await deleteHotline(hotline.id);
-    } catch (deleteError) {
-      alert(deleteError.message || 'Unable to delete hotline.');
-    }
+  const handleDelete = (hotline) => {
+    confirmAction({
+      title: 'Delete Hotline',
+      message: `Are you sure you want to delete the hotline "${hotline.name}" (${hotline.phoneNumber})? It will be removed immediately from both the admin portal and the resident mobile app.`,
+      confirmText: 'Delete Hotline',
+      variant: 'danger',
+      action: async () => {
+        await deleteHotline(hotline.id);
+      },
+    });
   };
 
   return (
@@ -220,6 +265,19 @@ export default function Hotlines() {
           </div>
         </div>
       )}
+
+      {/* Reusable Confirm Modal */}
+      <ConfirmModal
+        isOpen={confirmModal.isOpen}
+        title={confirmModal.title}
+        message={confirmModal.message}
+        confirmText={confirmModal.confirmText}
+        cancelText={confirmModal.cancelText}
+        variant={confirmModal.variant}
+        isProcessing={confirmModal.isProcessing}
+        onConfirm={confirmModal.onConfirm}
+        onCancel={() => setConfirmModal((prev) => ({ ...prev, isOpen: false }))}
+      />
     </div>
   );
 }

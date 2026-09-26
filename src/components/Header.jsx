@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Bell, Camera, CheckCheck, Menu, User, X } from 'lucide-react';
 import { useApp } from '../context/useApp';
+import ConfirmModal from './ConfirmModal';
 
 export default function Header({ onToggleMobileMenu }) {
   const location = useLocation();
@@ -22,6 +23,40 @@ export default function Header({ onToggleMobileMenu }) {
   const [avatarPreview, setAvatarPreview] = useState('');
   const [isSaving, setIsSaving] = useState(false);
 
+  // Confirmation Modal State
+  const [confirmModal, setConfirmModal] = useState({
+    isOpen: false,
+    title: '',
+    message: '',
+    confirmText: 'Confirm',
+    cancelText: 'Cancel',
+    variant: 'primary',
+    isProcessing: false,
+    onConfirm: () => {},
+  });
+
+  const confirmAction = ({ title, message, confirmText = 'Confirm', variant = 'primary', action }) => {
+    setConfirmModal({
+      isOpen: true,
+      title,
+      message,
+      confirmText,
+      cancelText: 'Cancel',
+      variant,
+      isProcessing: false,
+      onConfirm: async () => {
+        setConfirmModal((prev) => ({ ...prev, isProcessing: true }));
+        try {
+          await action();
+          setConfirmModal((prev) => ({ ...prev, isOpen: false, isProcessing: false }));
+        } catch (err) {
+          setConfirmModal((prev) => ({ ...prev, isProcessing: false }));
+          alert(err.message || 'Operation failed.');
+        }
+      },
+    });
+  };
+
   const getTitle = (path) => {
     switch (path) {
       case '/dashboard':
@@ -33,7 +68,7 @@ export default function Header({ onToggleMobileMenu }) {
       case '/map':
         return 'Reports Map View';
       case '/residents':
-        return 'Residents Management';
+        return 'Users Management';
       case '/notifications':
         return 'Send Notification';
       case '/hotlines':
@@ -80,23 +115,28 @@ export default function Header({ onToggleMobileMenu }) {
     setAvatarPreview(URL.createObjectURL(file));
   };
 
-  const handleProfileSubmit = async (event) => {
+  const handleProfileSubmit = (event) => {
     event.preventDefault();
-    setIsSaving(true);
-
-    try {
-      await updateCurrentProfile({
-        fullname,
-        phone,
-        email: session?.user?.email || email,
-        avatarFile
-      });
-      setIsProfileOpen(false);
-    } catch (error) {
-      alert(error.message || 'Unable to update profile.');
-    } finally {
-      setIsSaving(false);
-    }
+    confirmAction({
+      title: 'Update Profile',
+      message: 'Are you sure you want to save these profile changes?',
+      confirmText: 'Save Changes',
+      variant: 'primary',
+      action: async () => {
+        setIsSaving(true);
+        try {
+          await updateCurrentProfile({
+            fullname,
+            phone,
+            email: session?.user?.email || email,
+            avatarFile,
+          });
+          setIsProfileOpen(false);
+        } finally {
+          setIsSaving(false);
+        }
+      },
+    });
   };
 
   const unreadCount = (adminNotifications || []).filter((item) => !item.isRead).length;
@@ -112,18 +152,25 @@ export default function Header({ onToggleMobileMenu }) {
         navigate(`/reports?focus=${notification.reportId}&status=Pending`);
       } else if (notification.userId || notification.type === 'new_user') {
         navigate(`/residents?focus=${notification.userId || ''}`);
+      } else if (notification.type === 'broadcast_sent') {
+        navigate('/notifications');
       }
     } catch (error) {
       alert(error.message || 'Unable to open notification.');
     }
   };
 
-  const handleMarkAllRead = async () => {
-    try {
-      await markAllAdminNotificationsRead();
-    } catch (error) {
-      alert(error.message || 'Unable to mark notifications read.');
-    }
+  const handleMarkAllRead = () => {
+    if (unreadCount === 0) return;
+    confirmAction({
+      title: 'Mark All as Read',
+      message: `Do you want to mark all ${unreadCount} unread administrative notification${unreadCount > 1 ? 's' : ''} as read?`,
+      confirmText: 'Mark All Read',
+      variant: 'primary',
+      action: async () => {
+        await markAllAdminNotificationsRead();
+      },
+    });
   };
 
   return (
@@ -189,8 +236,12 @@ export default function Header({ onToggleMobileMenu }) {
                       <span className="admin-notification-body">
                         <span className="admin-notification-header-line">
                           <strong>{notification.title}</strong>
-                          <span className={`admin-notification-pill ${notification.type === 'new_user' ? 'user' : 'report'}`}>
-                            {notification.type === 'new_user' ? 'Resident' : 'Report'}
+                          <span className={`admin-notification-pill ${
+                            notification.type === 'new_user' ? 'user' :
+                            notification.type === 'broadcast_sent' ? 'broadcast' : 'report'
+                          }`}>
+                            {notification.type === 'new_user' ? 'Resident' :
+                             notification.type === 'broadcast_sent' ? 'Sent' : 'Report'}
                           </span>
                         </span>
                         <span>{notification.message}</span>
@@ -290,6 +341,19 @@ export default function Header({ onToggleMobileMenu }) {
           </div>
         </div>
       )}
+
+      {/* Reusable Confirm Modal */}
+      <ConfirmModal
+        isOpen={confirmModal.isOpen}
+        title={confirmModal.title}
+        message={confirmModal.message}
+        confirmText={confirmModal.confirmText}
+        cancelText={confirmModal.cancelText}
+        variant={confirmModal.variant}
+        isProcessing={confirmModal.isProcessing}
+        onConfirm={confirmModal.onConfirm}
+        onCancel={() => setConfirmModal((prev) => ({ ...prev, isOpen: false }))}
+      />
     </header>
   );
 }

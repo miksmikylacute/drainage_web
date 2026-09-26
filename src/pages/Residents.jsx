@@ -2,13 +2,14 @@ import { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useApp } from '../context/useApp';
 import { ChevronLeft, ChevronRight, FileText, Search, Trash2, Upload, UserPlus, X } from 'lucide-react';
+import ConfirmModal from '../components/ConfirmModal';
 import '../css/residents.css';
 
 const ITEMS_PER_PAGE = 10;
 
 export default function Residents() {
-  const { 
-    residents, 
+  const {
+    residents,
     createUser,
     session,
     deleteUser,
@@ -16,7 +17,7 @@ export default function Residents() {
     loading
   } = useApp();
   const isSuperAdmin = session?.user?.role === 'super_admin';
-  
+
   const [searchParams, setSearchParams] = useSearchParams();
   const focusUserId = searchParams.get('focus') || '';
 
@@ -24,7 +25,7 @@ export default function Residents() {
   const [statusFilter, setStatusFilter] = useState('All');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
-  
+
   // Form State
   const [role, setRole] = useState('resident');
   const [name, setName] = useState('');
@@ -36,6 +37,18 @@ export default function Residents() {
   const [idCardFrontPreview, setIdCardFrontPreview] = useState(null);
   const [idCardBackPreview, setIdCardBackPreview] = useState(null);
   const [isSaving, setIsSaving] = useState(false);
+
+  // Confirmation Modal State
+  const [confirmModal, setConfirmModal] = useState({
+    isOpen: false,
+    title: '',
+    message: '',
+    confirmText: 'Confirm',
+    cancelText: 'Cancel',
+    variant: 'primary',
+    isProcessing: false,
+    onConfirm: () => { },
+  });
 
   const [selectedUser, setSelectedUser] = useState(null);
   const [viewingImageUrl, setViewingImageUrl] = useState(null);
@@ -77,7 +90,86 @@ export default function Residents() {
     setIsModalOpen(true);
   };
 
-  const handleSubmit = async (e) => {
+  const confirmAction = ({ title, message, confirmText = 'Confirm', variant = 'primary', action }) => {
+    setConfirmModal({
+      isOpen: true,
+      title,
+      message,
+      confirmText,
+      cancelText: 'Cancel',
+      variant,
+      isProcessing: false,
+      onConfirm: async () => {
+        setConfirmModal((prev) => ({ ...prev, isProcessing: true }));
+        try {
+          await action();
+          setConfirmModal((prev) => ({ ...prev, isOpen: false, isProcessing: false }));
+        } catch (err) {
+          setConfirmModal((prev) => ({ ...prev, isProcessing: false }));
+          alert(err.message || 'Operation failed.');
+        }
+      },
+    });
+  };
+
+  const handleApproveResident = (user, fromModal = false) => {
+    confirmAction({
+      title: 'Approve Resident ID',
+      message: `Are you sure you want to approve ${user.name}? This will activate their account and grant them permission to report drainage concerns.`,
+      confirmText: 'Approve',
+      variant: 'success',
+      action: async () => {
+        await updateUserStatus(user.id, 'Active');
+        if (fromModal) closeInspectionModal();
+      },
+    });
+  };
+
+  const handleRejectResident = (user, fromModal = false) => {
+    confirmAction({
+      title: 'Reject Resident Registration',
+      message: `Are you sure you want to reject ${user.name}? Their account status will be set to Disabled.`,
+      confirmText: 'Reject',
+      variant: 'danger',
+      action: async () => {
+        await updateUserStatus(user.id, 'Disabled');
+        if (fromModal) closeInspectionModal();
+      },
+    });
+  };
+
+  const handleToggleStatus = (user) => {
+    const isCurrentlyActive = user.status === 'Active' || !user.status;
+    const newStatus = isCurrentlyActive ? 'Disabled' : 'Active';
+    confirmAction({
+      title: isCurrentlyActive ? 'Disable User Account' : 'Enable User Account',
+      message: isCurrentlyActive
+        ? `Are you sure you want to disable ${user.name}'s account? They will no longer be able to log in.`
+        : `Are you sure you want to enable ${user.name}'s account?`,
+      confirmText: isCurrentlyActive ? 'Disable' : 'Enable',
+      variant: isCurrentlyActive ? 'danger' : 'success',
+      action: async () => {
+        await updateUserStatus(user.id, newStatus);
+      },
+    });
+  };
+
+  const handleDeleteUser = (user, fromModal = false) => {
+    if (!isSuperAdmin || user.role === 'super_admin') return;
+
+    confirmAction({
+      title: 'Permanently Delete Account',
+      message: `Delete ${user.name}? This will permanently remove the ${user.role} account. Resident reports and related records will be deleted by database cascade. This action cannot be undone.`,
+      confirmText: 'Delete Permanently',
+      variant: 'danger',
+      action: async () => {
+        await deleteUser(user.id);
+        if (fromModal) closeInspectionModal();
+      },
+    });
+  };
+
+  const handleSubmit = (e) => {
     e.preventDefault();
     if (!name.trim() || !contact.trim() || !email.trim() || !password) {
       alert('Please fill out all fields.');
@@ -89,49 +181,37 @@ export default function Residents() {
       return;
     }
 
-    setIsSaving(true);
+    confirmAction({
+      title: 'Confirm Account Creation',
+      message: `Are you sure you want to create a new ${role} account for "${name.trim()}" (${email.trim()})?`,
+      confirmText: 'Create Account',
+      variant: 'primary',
+      action: async () => {
+        setIsSaving(true);
+        try {
+          await createUser({
+            role,
+            name: name.trim(),
+            contact: contact.trim(),
+            email: email.trim(),
+            password,
+            idCardFrontFile,
+            idCardBackFile,
+          });
 
-    try {
-      await createUser({
-        role,
-        name: name.trim(),
-        contact: contact.trim(),
-        email: email.trim(),
-        password,
-        idCardFrontFile,
-        idCardBackFile
-      });
-
-      resetForm();
-      setIsModalOpen(false);
-    } catch (saveError) {
-      alert(saveError.message || 'Unable to save resident.');
-    } finally {
-      setIsSaving(false);
-    }
+          resetForm();
+          setIsModalOpen(false);
+        } finally {
+          setIsSaving(false);
+        }
+      },
+    });
   };
 
   const closeModal = () => {
     if (isSaving) return;
     setIsModalOpen(false);
     resetForm();
-  };
-
-  const handleDeleteUser = async (user) => {
-    if (!isSuperAdmin || user.role === 'super_admin') return;
-
-    const shouldDelete = window.confirm(
-      `Delete ${user.name}? This will permanently remove the ${user.role} account. Resident reports and related records will be deleted by database cascade.`
-    );
-
-    if (!shouldDelete) return;
-
-    try {
-      await deleteUser(user.id);
-      closeInspectionModal();
-    } catch (deleteError) {
-      alert(deleteError.message || 'Unable to delete user.');
-    }
   };
 
   const visibleUsers = residents.filter((user) => isSuperAdmin || user.role === 'resident');
@@ -276,8 +356,8 @@ export default function Residents() {
           </div>
 
           {/* Add User Button */}
-          <button 
-            className="btn-primary" 
+          <button
+            className="btn-primary"
             onClick={openAddModal}
             style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 18px', borderRadius: '12px', whiteSpace: 'nowrap' }}
           >
@@ -314,8 +394,8 @@ export default function Residents() {
                     className={`residents-table-row ${focusUserId === user.id ? 'user-row-highlight' : ''}`}
                   >
                     <td className="col-user-name">
-                      <div 
-                        className="user-cell" 
+                      <div
+                        className="user-cell"
                         style={{ cursor: 'pointer' }}
                         onClick={() => setSelectedUser(user)}
                       >
@@ -364,26 +444,14 @@ export default function Residents() {
                             <button
                               type="button"
                               className="action-btn-approve"
-                              onClick={async () => {
-                                try {
-                                  await updateUserStatus(user.id, 'Active');
-                                } catch (statusError) {
-                                  alert(statusError.message || 'Unable to approve resident.');
-                                }
-                              }}
+                              onClick={() => handleApproveResident(user)}
                             >
                               Approve
                             </button>
                             <button
                               type="button"
                               className="action-btn-reject"
-                              onClick={async () => {
-                                try {
-                                  await updateUserStatus(user.id, 'Disabled');
-                                } catch (statusError) {
-                                  alert(statusError.message || 'Unable to reject resident.');
-                                }
-                              }}
+                              onClick={() => handleRejectResident(user)}
                             >
                               Reject
                             </button>
@@ -394,13 +462,7 @@ export default function Residents() {
                               type="button"
                               className="action-btn-toggle"
                               title={user.status === 'Active' ? 'Disable this account' : 'Enable this account'}
-                              onClick={async () => {
-                                try {
-                                  await updateUserStatus(user.id, user.status === 'Active' ? 'Disabled' : 'Active');
-                                } catch (statusError) {
-                                  alert(statusError.message || 'Unable to update user status.');
-                                }
-                              }}
+                              onClick={() => handleToggleStatus(user)}
                             >
                               {user.status === 'Active' ? 'Disable' : 'Enable'}
                             </button>
@@ -641,8 +703,8 @@ export default function Residents() {
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '16px', margin: '20px 0 10px' }}>
               <div className="admin-avatar-preview" style={{ width: '100px', height: '100px', fontSize: '32px', fontWeight: '800' }}>
                 {activeInspectionUser.avatarUrl ? (
-                  <div 
-                    onClick={() => setViewingImageUrl(activeInspectionUser.avatarUrl)} 
+                  <div
+                    onClick={() => setViewingImageUrl(activeInspectionUser.avatarUrl)}
                     style={{ cursor: 'pointer', display: 'block', width: '100%', height: '100%' }}
                   >
                     <img src={activeInspectionUser.avatarUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
@@ -713,14 +775,7 @@ export default function Residents() {
                   type="button"
                   className="btn-primary"
                   style={{ flex: 1, backgroundColor: '#22C55E' }}
-                  onClick={async () => {
-                    try {
-                      await updateUserStatus(activeInspectionUser.id, 'Active');
-                      closeInspectionModal();
-                    } catch (e) {
-                      alert(e.message || 'Unable to approve user.');
-                    }
-                  }}
+                  onClick={() => handleApproveResident(activeInspectionUser, true)}
                 >
                   Approve Resident ID
                 </button>
@@ -728,14 +783,7 @@ export default function Residents() {
                   type="button"
                   className="btn-secondary"
                   style={{ flex: 1, color: '#dc2626', borderColor: '#fecaca' }}
-                  onClick={async () => {
-                    try {
-                      await updateUserStatus(activeInspectionUser.id, 'Disabled');
-                      closeInspectionModal();
-                    } catch (e) {
-                      alert(e.message || 'Unable to reject user.');
-                    }
-                  }}
+                  onClick={() => handleRejectResident(activeInspectionUser, true)}
                 >
                   Reject ID
                 </button>
@@ -747,7 +795,7 @@ export default function Residents() {
                 <button
                   type="button"
                   className="btn-secondary"
-                  onClick={() => handleDeleteUser(activeInspectionUser)}
+                  onClick={() => handleDeleteUser(activeInspectionUser, true)}
                   style={{ width: '100%', color: '#dc2626', borderColor: '#fecaca' }}
                 >
                   Delete Account
@@ -763,21 +811,21 @@ export default function Residents() {
 
       {/* Image Viewer Overlay */}
       {viewingImageUrl && (
-        <div 
-          className="modal-overlay" 
-          onClick={() => setViewingImageUrl(null)} 
+        <div
+          className="modal-overlay"
+          onClick={() => setViewingImageUrl(null)}
           style={{ zIndex: 10000, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'zoom-out' }}
         >
           <div style={{ position: 'relative', maxWidth: '90vw', maxHeight: '90vh' }}>
-            <img 
-              src={viewingImageUrl} 
-              alt="Profile" 
-              style={{ maxWidth: '100%', maxHeight: '90vh', objectFit: 'contain', borderRadius: '8px', boxShadow: '0 10px 25px rgba(0,0,0,0.5)' }} 
-              onClick={(e) => e.stopPropagation()} 
+            <img
+              src={viewingImageUrl}
+              alt="Profile"
+              style={{ maxWidth: '100%', maxHeight: '90vh', objectFit: 'contain', borderRadius: '8px', boxShadow: '0 10px 25px rgba(0,0,0,0.5)' }}
+              onClick={(e) => e.stopPropagation()}
             />
-            <button 
-              className="modal-close" 
-              onClick={() => setViewingImageUrl(null)} 
+            <button
+              className="modal-close"
+              onClick={() => setViewingImageUrl(null)}
               style={{ position: 'absolute', top: '-40px', right: '0', color: 'white', background: 'transparent', border: 'none', cursor: 'pointer', padding: '8px' }}
             >
               <X size={28} />
@@ -785,6 +833,19 @@ export default function Residents() {
           </div>
         </div>
       )}
+
+      {/* Reusable Confirm Modal */}
+      <ConfirmModal
+        isOpen={confirmModal.isOpen}
+        title={confirmModal.title}
+        message={confirmModal.message}
+        confirmText={confirmModal.confirmText}
+        cancelText={confirmModal.cancelText}
+        variant={confirmModal.variant}
+        isProcessing={confirmModal.isProcessing}
+        onConfirm={confirmModal.onConfirm}
+        onCancel={() => setConfirmModal((prev) => ({ ...prev, isOpen: false }))}
+      />
     </div>
   );
 }
