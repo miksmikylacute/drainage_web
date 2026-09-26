@@ -36,6 +36,7 @@ function dayKey(date) {
 }
 
 function formatMonthLabel(value) {
+  if (value === 'all') return 'All Time';
   const [year, month] = value.split('-').map(Number);
   return new Date(year, month - 1, 1).toLocaleDateString('en-US', {
     month: 'long',
@@ -67,9 +68,14 @@ function buildMonthOptions(reports) {
     cursor.setMonth(cursor.getMonth() + 1);
   }
 
-  return options
+  const sortedMonths = options
     .sort((a, b) => b.localeCompare(a))
     .map((value) => ({ value, label: formatMonthLabel(value) }));
+
+  return [
+    { value: 'all', label: 'All Time' },
+    ...sortedMonths,
+  ];
 }
 
 function buildYAxisTicks(maxValue) {
@@ -87,91 +93,213 @@ function buildYAxisTicks(maxValue) {
 }
 
 function buildStatusTrendData(reports, selectedMonth) {
+  const reportDates = reports.map(reportCreatedDate).filter(Boolean);
+  const today = new Date();
+  const minDate = reportDates.length > 0
+    ? new Date(Math.min(...reportDates.map((date) => date.getTime())))
+    : today;
+  const maxDate = reportDates.length > 0
+    ? new Date(Math.max(today.getTime(), ...reportDates.map((date) => date.getTime())))
+    : today;
+
+  if (selectedMonth === 'all') {
+    // Check if reports span within a single month
+    const isSingleMonth =
+      minDate.getFullYear() === maxDate.getFullYear() &&
+      minDate.getMonth() === maxDate.getMonth();
+
+    if (isSingleMonth) {
+      // If all reports occurred in the same month, show daily intervals so daily trend is visible and matches month filter!
+      const year = minDate.getFullYear();
+      const month = minDate.getMonth() + 1;
+      const daysInMonth = new Date(year, month, 0).getDate();
+      const intervals = Array.from({ length: daysInMonth }, (_, index) => {
+        const date = new Date(year, month - 1, index + 1);
+        return {
+          key: dayKey(date),
+          label: String(index + 1),
+          fullLabel: date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+        };
+      });
+
+      const counts = Object.fromEntries(
+        STATUS_LINE_SERIES.map((series) => [
+          series.status,
+          Object.fromEntries(intervals.map((day) => [day.key, 0])),
+        ])
+      );
+
+      reports.forEach((report) => {
+        if (!counts[report.status]) return;
+        const createdAt = reportCreatedDate(report);
+        if (!createdAt) return;
+        const reportDayKey = dayKey(startOfLocalDay(createdAt));
+        if (counts[report.status][reportDayKey] !== undefined) {
+          counts[report.status][reportDayKey] += 1;
+        }
+      });
+
+      const rawMax = Math.max(
+        0,
+        ...STATUS_LINE_SERIES.flatMap((series) =>
+          intervals.map((day) => counts[series.status][day.key])
+        )
+      );
+      const maxValue = Math.max(4, rawMax <= 5 ? rawMax + 1 : Math.ceil(rawMax * 1.15));
+
+      return {
+        intervals,
+        counts,
+        maxValue,
+        xAxisTitle: `Date (${minDate.toLocaleDateString('en-US', { month: 'short', year: 'numeric' })})`,
+        subtitle: 'Daily by status (All Time)',
+      };
+    }
+
+    // Multi-month: start from minDate's month to maxDate's month (no empty padding from January!)
+    const cursor = new Date(minDate.getFullYear(), minDate.getMonth(), 1);
+    const endMonth = new Date(maxDate.getFullYear(), maxDate.getMonth(), 1);
+
+    const intervals = [];
+    while (cursor <= endMonth) {
+      const key = monthKey(cursor);
+      intervals.push({
+        key,
+        label: cursor.toLocaleDateString('en-US', {
+          month: 'short',
+          year: minDate.getFullYear() !== maxDate.getFullYear() ? '2-digit' : undefined,
+        }),
+        fullLabel: cursor.toLocaleDateString('en-US', { month: 'long', year: 'numeric' }),
+      });
+      cursor.setMonth(cursor.getMonth() + 1);
+    }
+
+    const counts = Object.fromEntries(
+      STATUS_LINE_SERIES.map((series) => [
+        series.status,
+        Object.fromEntries(intervals.map((item) => [item.key, 0])),
+      ])
+    );
+
+    reports.forEach((report) => {
+      if (!counts[report.status]) return;
+      const createdAt = reportCreatedDate(report);
+      if (!createdAt) return;
+      const mKey = monthKey(createdAt);
+      if (counts[report.status][mKey] !== undefined) {
+        counts[report.status][mKey] += 1;
+      }
+    });
+
+    const rawMax = Math.max(
+      0,
+      ...STATUS_LINE_SERIES.flatMap((series) =>
+        intervals.map((item) => counts[series.status][item.key])
+      )
+    );
+    const maxValue = Math.max(4, rawMax <= 5 ? rawMax + 1 : Math.ceil(rawMax * 1.15));
+
+    return {
+      intervals,
+      counts,
+      maxValue,
+      xAxisTitle: 'Month',
+      subtitle: 'Monthly by status (All Time)',
+    };
+  }
+
+  // Monthly view: daily intervals
   const [year, month] = selectedMonth.split('-').map(Number);
   const daysInMonth = new Date(year, month, 0).getDate();
-  const days = Array.from({ length: daysInMonth }, (_, index) => {
+  const intervals = Array.from({ length: daysInMonth }, (_, index) => {
     const date = new Date(year, month - 1, index + 1);
     return {
       key: dayKey(date),
       label: String(index + 1),
-      fullLabel: date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+      fullLabel: date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
     };
   });
 
   const counts = Object.fromEntries(
     STATUS_LINE_SERIES.map((series) => [
       series.status,
-      Object.fromEntries(days.map((day) => [day.key, 0])),
+      Object.fromEntries(intervals.map((day) => [day.key, 0])),
     ])
   );
 
   reports.forEach((report) => {
     if (!counts[report.status]) return;
-
     const createdAt = reportCreatedDate(report);
     if (!createdAt) return;
-
     const reportDayKey = dayKey(startOfLocalDay(createdAt));
     if (counts[report.status][reportDayKey] !== undefined) {
       counts[report.status][reportDayKey] += 1;
     }
   });
 
-  const maxValue = Math.max(
-    1,
+  const rawMax = Math.max(
+    0,
     ...STATUS_LINE_SERIES.flatMap((series) =>
-      days.map((day) => counts[series.status][day.key])
+      intervals.map((day) => counts[series.status][day.key])
     )
   );
+  const maxValue = Math.max(4, rawMax <= 5 ? rawMax + 1 : Math.ceil(rawMax * 1.15));
 
-  return { days, counts, maxValue };
+  return {
+    intervals,
+    counts,
+    maxValue,
+    xAxisTitle: 'Date',
+    subtitle: 'Daily by status',
+  };
 }
 
-function buildSmoothPath(points) {
-  if (points.length === 0) return '';
-  if (points.length === 1) return `M ${points[0].x} ${points[0].y}`;
-
-  return points.reduce((path, point, index) => {
-    if (index === 0) return `M ${point.x} ${point.y}`;
-
-    const previous = points[index - 1];
-    const controlDistance = (point.x - previous.x) * 0.45;
-    const controlStartX = previous.x + controlDistance;
-    const controlEndX = point.x - controlDistance;
-    return `${path} C ${controlStartX} ${previous.y}, ${controlEndX} ${point.y}, ${point.x} ${point.y}`;
-  }, '');
-}
-
-function StatusLineChart({ reports }) {
-  const monthOptions = useMemo(() => buildMonthOptions(reports), [reports]);
-  const [selectedMonth, setSelectedMonth] = useState(() => monthKey(new Date()));
-  const { days, counts, maxValue } = useMemo(
+function StatusLineChart({ reports, selectedMonth, onSelectMonth, monthOptions }) {
+  const { intervals, counts, maxValue, xAxisTitle, subtitle } = useMemo(
     () => buildStatusTrendData(reports, selectedMonth),
     [reports, selectedMonth]
   );
+  const [hoverIndex, setHoverIndex] = useState(null);
+
   const width = 1180;
   const height = 310;
-  const padding = { top: 18, right: 18, bottom: 58, left: 58 };
+  const padding = { top: 24, right: 28, bottom: 58, left: 58 };
   const chartWidth = width - padding.left - padding.right;
   const chartHeight = height - padding.top - padding.bottom;
   const yTicks = buildYAxisTicks(maxValue);
 
   const getX = (index) =>
-    padding.left + (days.length === 1 ? chartWidth / 2 : (chartWidth / (days.length - 1)) * index);
+    padding.left + (intervals.length === 1 ? chartWidth / 2 : (chartWidth / (intervals.length - 1)) * index);
   const getY = (value) =>
     padding.top + chartHeight - (value / maxValue) * chartHeight;
+
+  const handleMouseMove = (e) => {
+    const svgRect = e.currentTarget.getBoundingClientRect();
+    const mouseX = ((e.clientX - svgRect.left) / svgRect.width) * width;
+    if (mouseX < padding.left || mouseX > width - padding.right || intervals.length <= 1) {
+      return;
+    }
+    const ratio = (mouseX - padding.left) / chartWidth;
+    const rawIndex = Math.round(ratio * (intervals.length - 1));
+    const clampedIndex = Math.max(0, Math.min(intervals.length - 1, rawIndex));
+    setHoverIndex(clampedIndex);
+  };
+
+  const handleMouseLeave = () => {
+    setHoverIndex(null);
+  };
 
   return (
     <div className="status-line-card card">
       <div className="section-header">
         <h2>Report Status Trend</h2>
         <div className="status-line-controls">
-          <span className="status-line-subtitle">Daily by status</span>
+          <span className="status-line-subtitle">{subtitle}</span>
           <select
             className="status-line-select"
             value={selectedMonth}
-            onChange={(event) => setSelectedMonth(event.target.value)}
-            aria-label="Select trend month"
+            onChange={(event) => onSelectMonth(event.target.value)}
+            aria-label="Select trend period"
           >
             {monthOptions.map((option) => (
               <option key={option.value} value={option.value}>
@@ -181,12 +309,15 @@ function StatusLineChart({ reports }) {
           </select>
         </div>
       </div>
-      <div className="status-line-chart-wrap">
+      <div className="status-line-chart-wrap" style={{ position: 'relative' }}>
         <svg
           className="status-line-chart"
           viewBox={`0 0 ${width} ${height}`}
           role="img"
           aria-label={`Line graph showing report status counts for ${formatMonthLabel(selectedMonth)}`}
+          onMouseMove={handleMouseMove}
+          onMouseLeave={handleMouseLeave}
+          style={{ cursor: 'crosshair' }}
         >
           <text
             x={padding.left + chartWidth / 2}
@@ -194,7 +325,7 @@ function StatusLineChart({ reports }) {
             className="status-line-axis-title"
             textAnchor="middle"
           >
-            Date
+            {xAxisTitle}
           </text>
           <text
             x={16}
@@ -224,25 +355,42 @@ function StatusLineChart({ reports }) {
             );
           })}
 
-          {days.map((day, index) => (
+          {intervals.map((item, index) => (
             <text
-              key={day.key}
+              key={item.key}
               x={getX(index)}
               y={height - 32}
               className="status-line-day-label"
               textAnchor="middle"
+              style={{ fontWeight: hoverIndex === index ? '800' : '600' }}
             >
-              {day.label}
+              {item.label}
             </text>
           ))}
 
-          {STATUS_LINE_SERIES.map((series) => {
-            const points = days.map((day, index) => ({
+          {/* Vertical cursor guide line when hovering */}
+          {hoverIndex !== null && (
+            <line
+              x1={getX(hoverIndex)}
+              x2={getX(hoverIndex)}
+              y1={padding.top}
+              y2={padding.top + chartHeight}
+              stroke="#64748b"
+              strokeDasharray="4 3"
+              strokeWidth="1.5"
+              pointerEvents="none"
+            />
+          )}
+
+          {/* Status Lines & Dots */}
+          {STATUS_LINE_SERIES.map((series, sIndex) => {
+            const points = intervals.map((item, index) => ({
               x: getX(index),
-              y: getY(counts[series.status][day.key]),
-              value: counts[series.status][day.key],
+              y: getY(counts[series.status][item.key]),
+              value: counts[series.status][item.key],
+              item,
             }));
-            const pathData = buildSmoothPath(points);
+            const pathData = points.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x} ${p.y}`).join(' ');
 
             return (
               <g key={series.status}>
@@ -255,10 +403,62 @@ function StatusLineChart({ reports }) {
                   strokeLinejoin="round"
                   className="status-line-path"
                 />
-                <title>{`${series.label} trend for ${formatMonthLabel(selectedMonth)}`}</title>
+                {points.map((p, pIndex) => {
+                  const isHovered = hoverIndex === pIndex;
+                  if (p.value === 0 && !isHovered) return null;
+                  // If multiple statuses have the same non-zero value, apply a slight horizontal offset so dots don't completely cover each other
+                  const offset = p.value > 0 ? (sIndex - 1.5) * 4 : 0;
+                  return (
+                    <circle
+                      key={`${series.status}-${p.item.key}`}
+                      cx={p.x + offset}
+                      cy={p.y}
+                      r={isHovered ? 5.5 : 4}
+                      fill={series.color}
+                      stroke="#ffffff"
+                      strokeWidth="1.5"
+                      pointerEvents="none"
+                    />
+                  );
+                })}
               </g>
             );
           })}
+
+          {/* Interactive Tooltip Card */}
+          {hoverIndex !== null && (
+            <g
+              transform={`translate(${Math.min(width - 180, Math.max(padding.left, getX(hoverIndex) - 75))}, ${padding.top + 8})`}
+              pointerEvents="none"
+            >
+              <rect
+                width="156"
+                height="104"
+                rx="10"
+                fill="#0f172a"
+                fillOpacity="0.94"
+                stroke="#334155"
+                strokeWidth="1"
+              />
+              <text x="12" y="20" fill="#f8fafc" fontSize="11" fontWeight="700">
+                {intervals[hoverIndex].fullLabel || intervals[hoverIndex].label}
+              </text>
+              {STATUS_LINE_SERIES.map((series, sIdx) => {
+                const val = counts[series.status][intervals[hoverIndex].key] || 0;
+                return (
+                  <g key={series.status} transform={`translate(12, ${37 + sIdx * 15})`}>
+                    <circle cx="4" cy="0" r="3.5" fill={series.color} />
+                    <text x="14" y="3.5" fill="#cbd5e1" fontSize="10.5" fontWeight="500">
+                      {series.label}:
+                    </text>
+                    <text x="132" y="3.5" fill="#ffffff" fontSize="11" fontWeight="700" textAnchor="end">
+                      {val}
+                    </text>
+                  </g>
+                );
+              })}
+            </g>
+          )}
         </svg>
       </div>
       <div className="status-line-legend">
@@ -420,33 +620,60 @@ export default function Dashboard() {
     return () => window.clearInterval(timer);
   }, []);
 
-  // Calculate statistics dynamically
+  // Shared Month Filter State
+  const monthOptions = useMemo(() => buildMonthOptions(reports), [reports]);
+  const [selectedMonth, setSelectedMonth] = useState(() => monthKey(new Date()));
+
+  // Filter reports for status pie chart based on selectedMonth
+  const filteredStatusReports = useMemo(() => {
+    if (selectedMonth === 'all') {
+      return reports;
+    }
+    return reports.filter((report) => {
+      const createdAt = reportCreatedDate(report);
+      if (!createdAt) return false;
+      return monthKey(createdAt) === selectedMonth;
+    });
+  }, [reports, selectedMonth]);
+
+  // Overall statistics for top summary cards
   const totalReports = reports.length;
   const pendingCount = reports.filter(r => r.status === 'Pending').length;
   const inProgressCount = reports.filter(r => r.status === 'In Progress').length;
   const resolvedCount = reports.filter(r => r.status === 'Resolved').length;
   const rejectedCount = reports.filter(r => r.status === 'Rejected').length;
 
-  // Pie chart calculation
-  const totalForPie = pendingCount + inProgressCount + resolvedCount + rejectedCount || 1;
-  const pctPending = Math.round((pendingCount / totalForPie) * 100);
-  const pctInProgress = Math.round((inProgressCount / totalForPie) * 100);
-  const pctResolved = Math.round((resolvedCount / totalForPie) * 100);
-  const pctRejected = 100 - pctPending - pctInProgress - pctResolved;
+  // Pie chart calculation based on synchronized selectedMonth filter
+  const piePendingCount = filteredStatusReports.filter(r => r.status === 'Pending').length;
+  const pieInProgressCount = filteredStatusReports.filter(r => r.status === 'In Progress').length;
+  const pieResolvedCount = filteredStatusReports.filter(r => r.status === 'Resolved').length;
+  const pieRejectedCount = filteredStatusReports.filter(r => r.status === 'Rejected').length;
 
-  const conicGradient = `conic-gradient(
-    #FFC107 0% ${pctPending}%,
-    #3B82F6 ${pctPending}% ${pctPending + pctInProgress}%,
-    #22C55E ${pctPending + pctInProgress}% ${pctPending + pctInProgress + pctResolved}%,
-    #EF4444 ${pctPending + pctInProgress + pctResolved}% 100%
-  )`;
+  const totalForPie = piePendingCount + pieInProgressCount + pieResolvedCount + pieRejectedCount;
+  const pctPending = totalForPie > 0 ? Math.round((piePendingCount / totalForPie) * 100) : 0;
+  const pctInProgress = totalForPie > 0 ? Math.round((pieInProgressCount / totalForPie) * 100) : 0;
+  const pctResolved = totalForPie > 0 ? Math.round((pieResolvedCount / totalForPie) * 100) : 0;
+  const pctRejected = totalForPie > 0 ? Math.max(0, 100 - pctPending - pctInProgress - pctResolved) : 0;
+
+  const conicGradient = totalForPie === 0
+    ? 'conic-gradient(#e2e8f0 0% 100%)'
+    : `conic-gradient(
+        #FFC107 0% ${pctPending}%,
+        #3B82F6 ${pctPending}% ${pctPending + pctInProgress}%,
+        #22C55E ${pctPending + pctInProgress}% ${pctPending + pctInProgress + pctResolved}%,
+        #EF4444 ${pctPending + pctInProgress + pctResolved}% 100%
+      )`;
 
   const statusChartItems = [
-    { label: 'Pending', count: pendingCount, pct: pctPending, color: '#FFC107' },
-    { label: 'In Progress', count: inProgressCount, pct: pctInProgress, color: '#3B82F6' },
-    { label: 'Resolved', count: resolvedCount, pct: pctResolved, color: '#22C55E' },
-    { label: 'Rejected', count: rejectedCount, pct: pctRejected, color: '#EF4444' }
+    { label: 'Pending', count: piePendingCount, pct: pctPending, color: '#FFC107' },
+    { label: 'In Progress', count: pieInProgressCount, pct: pctInProgress, color: '#3B82F6' },
+    { label: 'Resolved', count: pieResolvedCount, pct: pctResolved, color: '#22C55E' },
+    { label: 'Rejected', count: pieRejectedCount, pct: pctRejected, color: '#EF4444' }
   ];
+
+  const pieChartTitle = selectedMonth === 'all'
+    ? 'Recent by Status (All Time)'
+    : `Recent by Status (${formatMonthLabel(selectedMonth)})`;
 
   // Limit recent reports table to top 3 active reports matching Reports page sorting logic
   const recentReports = useMemo(() => {
@@ -604,14 +831,19 @@ export default function Dashboard() {
         </div>
       </div>
 
-      <StatusLineChart reports={reports} />
+      <StatusLineChart
+        reports={reports}
+        selectedMonth={selectedMonth}
+        onSelectMonth={setSelectedMonth}
+        monthOptions={monthOptions}
+      />
 
       {/* Bottom Row: Pie Chart | Reports by Location | System Info */}
       <div className="dashboard-bottom-grid">
         {/* Status Pie Chart */}
         <div className="card bottom-card">
           <div className="section-header">
-            <h2>Recent by Status (All Time)</h2>
+            <h2>{pieChartTitle}</h2>
           </div>
           
           <div className="chart-container">
@@ -633,7 +865,7 @@ export default function Dashboard() {
                   <div className="legend-color" style={{ backgroundColor: '#FFC107' }} />
                   <span>Pending</span>
                 </div>
-                <span className="legend-value">{pendingCount} ({pctPending}%)</span>
+                <span className="legend-value">{piePendingCount} ({pctPending}%)</span>
               </div>
 
               <div className="legend-item">
@@ -641,7 +873,7 @@ export default function Dashboard() {
                   <div className="legend-color inprogress" />
                   <span>In Progress</span>
                 </div>
-                <span className="legend-value">{inProgressCount} ({pctInProgress}%)</span>
+                <span className="legend-value">{pieInProgressCount} ({pctInProgress}%)</span>
               </div>
 
               <div className="legend-item">
@@ -649,7 +881,7 @@ export default function Dashboard() {
                   <div className="legend-color resolved" />
                   <span>Resolved</span>
                 </div>
-                <span className="legend-value">{resolvedCount} ({pctResolved}%)</span>
+                <span className="legend-value">{pieResolvedCount} ({pctResolved}%)</span>
               </div>
 
               <div className="legend-item">
@@ -657,7 +889,7 @@ export default function Dashboard() {
                   <div className="legend-color rejected" />
                   <span>Rejected</span>
                 </div>
-                <span className="legend-value">{rejectedCount} ({pctRejected}%)</span>
+                <span className="legend-value">{pieRejectedCount} ({pctRejected}%)</span>
               </div>
             </div>
           </div>

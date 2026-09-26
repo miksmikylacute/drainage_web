@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { useApp } from '../context/useApp';
-import { Search, X, Edit, ChevronLeft, ChevronRight, Trash2 } from 'lucide-react';
+import { Search, X, Edit, ChevronLeft, ChevronRight, Trash2, ExternalLink } from 'lucide-react';
+import ConfirmModal from '../components/ConfirmModal';
 import cloggedDrainImg from '../assets/clogged_drain.png';
 import { isReportVisibleOnMap } from '../lib/reportMapMarkers';
 import { isReportActiveForReportsPage } from '../lib/reportArchiveRules';
@@ -60,6 +61,18 @@ export default function Reports() {
   const [showRemarksPopup, setShowRemarksPopup] = useState(false);
   const [showImagePopup, setShowImagePopup] = useState(false);
 
+  // Confirmation Modal State
+  const [confirmModal, setConfirmModal] = useState({
+    isOpen: false,
+    title: '',
+    message: '',
+    confirmText: 'Confirm',
+    cancelText: 'Cancel',
+    variant: 'primary',
+    isProcessing: false,
+    onConfirm: () => { },
+  });
+
   const currentEditingReport = editingReport
     ? reports.find((report) => report.id === editingReport.id) || editingReport
     : null;
@@ -71,6 +84,28 @@ export default function Reports() {
     : [];
   const isSuperAdmin = session?.user?.role === 'super_admin';
 
+  const confirmAction = ({ title, message, confirmText = 'Confirm', variant = 'primary', action }) => {
+    setConfirmModal({
+      isOpen: true,
+      title,
+      message,
+      confirmText,
+      cancelText: 'Cancel',
+      variant,
+      isProcessing: false,
+      onConfirm: async () => {
+        setConfirmModal((prev) => ({ ...prev, isProcessing: true }));
+        try {
+          await action();
+          setConfirmModal((prev) => ({ ...prev, isOpen: false, isProcessing: false }));
+        } catch (err) {
+          setConfirmModal((prev) => ({ ...prev, isProcessing: false }));
+          alert(err.message || 'Operation failed.');
+        }
+      },
+    });
+  };
+
   const handleOpenEdit = (report) => {
     setEditingReport(report);
     setRemarks(report.remarks || '');
@@ -80,53 +115,65 @@ export default function Reports() {
     setShowImagePopup(false);
   };
 
-  const handleSave = async (e) => {
+  const handleSave = (e) => {
     e.preventDefault();
     if (!statusVal) {
       alert('Please select a status.');
       return;
     }
 
-    try {
-      await updateReportDetails(editingReport.id, statusVal, null, priorityVal || null);
-      if (remarks.trim()) {
-        await addReportRemark(editingReport.id, remarks);
+    const reportIdLabel = currentEditingReport?.displayId || 'this report';
+    confirmAction({
+      title: 'Confirm Report Update',
+      message: `Do you want to update ${reportIdLabel} to status "${statusVal}"${priorityVal ? ` with ${priorityVal} priority` : ''}?`,
+      confirmText: 'Update Report',
+      variant: 'primary',
+      action: async () => {
+        await updateReportDetails(editingReport.id, statusVal, null, priorityVal || null);
+        if (remarks.trim()) {
+          await addReportRemark(editingReport.id, remarks);
+          setRemarks('');
+        }
+        setEditingReport(null);
+      },
+    });
+  };
+
+  const handleAddRemark = () => {
+    if (!currentEditingReport) return;
+    if (!remarks.trim()) {
+      alert('Please enter a remark before saving.');
+      return;
+    }
+
+    const reportIdLabel = currentEditingReport.displayId || 'this report';
+    confirmAction({
+      title: 'Confirm Add Remark',
+      message: `Do you want to add this remark to ${reportIdLabel}?`,
+      confirmText: 'Add Remark',
+      variant: 'primary',
+      action: async () => {
+        await addReportRemark(currentEditingReport.id, remarks);
         setRemarks('');
-      }
-      setEditingReport(null);
-    } catch (saveError) {
-      alert(saveError.message || 'Unable to update report.');
-    }
+      },
+    });
   };
 
-  const handleAddRemark = async () => {
+  const handleDeleteReport = () => {
     if (!currentEditingReport) return;
 
-    try {
-      await addReportRemark(currentEditingReport.id, remarks);
-      setRemarks('');
-    } catch (remarkError) {
-      alert(remarkError.message || 'Unable to save remark.');
-    }
-  };
-
-  const handleDeleteReport = async () => {
-    if (!currentEditingReport) return;
-
-    const shouldDelete = window.confirm(
-      `Delete ${currentEditingReport.displayId}? This will permanently remove the report from the database, resident mobile app, report timeline, notifications, remarks, and admin map.`
-    );
-
-    if (!shouldDelete) return;
-
-    try {
-      await deleteReport(currentEditingReport.id);
-      setShowRemarksPopup(false);
-      setShowImagePopup(false);
-      setEditingReport(null);
-    } catch (deleteError) {
-      alert(deleteError.message || 'Unable to delete report.');
-    }
+    confirmAction({
+      title: 'Permanently Delete Report',
+      message: `This will permanently remove the report from the system. This action cannot be undone.`,
+      confirmText: 'Delete Report',
+      variant: 'danger',
+      action: async () => {
+        await deleteReport(currentEditingReport.id);
+        setShowRemarksPopup(false);
+        setShowImagePopup(false);
+        setEditingReport(null);
+      },
+    });
   };
 
   useEffect(() => {
@@ -412,16 +459,20 @@ export default function Reports() {
                 </div> */ }
                 <div className="report-detail-row">
                   <span className="report-detail-label">Location</span>
-                  {isReportVisibleOnMap(currentEditingReport) ? (
-                    <span
-                      className="report-detail-value location-link"
-                      onClick={() => navigate(`/map?focus=${currentEditingReport.id}`)}
-                    >
-                      {currentEditingReport.location}
-                    </span>
-                  ) : (
+                  <div className="report-location-wrap">
                     <span className="report-detail-value">{currentEditingReport.location}</span>
-                  )}
+                    {isReportVisibleOnMap(currentEditingReport) && (
+                      <button
+                        type="button"
+                        className="location-view-map-btn"
+                        onClick={() => navigate(`/map?focus=${currentEditingReport.id}`)}
+                        title="View on Map"
+                      >
+                        <span>View on Map</span>
+                        <ExternalLink size={12} />
+                      </button>
+                    )}
+                  </div>
                 </div>
                 <div className="report-detail-row">
                   <span className="report-detail-label">Coordinates</span>
@@ -673,6 +724,19 @@ export default function Reports() {
           )}
         </div>
       )}
+
+      {/* Reusable Confirm Modal */}
+      <ConfirmModal
+        isOpen={confirmModal.isOpen}
+        title={confirmModal.title}
+        message={confirmModal.message}
+        confirmText={confirmModal.confirmText}
+        cancelText={confirmModal.cancelText}
+        variant={confirmModal.variant}
+        isProcessing={confirmModal.isProcessing}
+        onConfirm={confirmModal.onConfirm}
+        onCancel={() => setConfirmModal((prev) => ({ ...prev, isOpen: false }))}
+      />
     </div>
   );
 }

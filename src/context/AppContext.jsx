@@ -1044,6 +1044,35 @@ export function AppProvider({ children }) {
       ...prevNotifications
     ]);
 
+    // Record an admin notification so the admin is notified in the header bell that messages were delivered
+    const recipientCount = recipients.length;
+    const preview = cleanMessage.length > 55 ? `${cleanMessage.slice(0, 52)}...` : cleanMessage;
+    const summaryTitle = 'Message Sent to Residents';
+    const summaryMessage = recipientCount === 1
+      ? `Notification successfully delivered to 1 resident: "${preview}"`
+      : `Notification successfully delivered to all ${recipientCount} selected residents: "${preview}"`;
+
+    try {
+      const { data: adminNotifData, error: adminNotifError } = await supabase
+        .from('admin_notifications')
+        .insert({
+          title: summaryTitle,
+          message: summaryMessage,
+          type: 'broadcast_sent',
+          is_read: false
+        })
+        .select('id,report_id,user_id,title,message,type,is_read,created_at,read_at,read_by')
+        .single();
+
+      if (!adminNotifError && adminNotifData) {
+        setAdminNotifications((prev) => [mapAdminNotification(adminNotifData), ...prev]);
+      } else {
+        await loadAdminNotifications();
+      }
+    } catch {
+      await loadAdminNotifications();
+    }
+
     return data;
   };
 

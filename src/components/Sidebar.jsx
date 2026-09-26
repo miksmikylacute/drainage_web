@@ -30,7 +30,7 @@ export default function Sidebar({ isOpen = false, onClose }) {
     { name: 'Reports', path: '/reports', icon: FileText, badge: reportsUnreadCount },
     { name: 'Map', path: '/map', icon: MapPin },
     { name: 'Report Archive', path: '/archive', icon: History },
-    { name: 'Residents', path: '/residents', icon: Users, badge: pendingResidentsCount },
+    { name: 'Users Management', path: '/residents', icon: Users, badge: pendingResidentsCount },
     { name: 'Notification', path: '/notifications', icon: Bell },
     { name: 'Hotlines', path: '/hotlines', icon: PhoneCall },
   ];
