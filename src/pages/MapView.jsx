@@ -14,7 +14,8 @@ import {
   MAUBAN_CENTER,
   REPORT_STATUS_COLORS,
 } from '../lib/reportMapMarkers';
-import { formatReportCoordinates, cleanLocationText } from '../lib/reportCoordinates';
+import { formatReportCoordinates, cleanLocationText, disambiguateReportCoordinates } from '../lib/reportCoordinates';
+import { getRemainingArchiveTime } from '../lib/reportArchiveRules';
 import '../css/map.css';
 
 const STATUS_OPTIONS = [
@@ -40,7 +41,7 @@ export default function MapView() {
   const [mapReady, setMapReady] = useState(false);
 
   useEffect(() => {
-    const timer = window.setInterval(() => setArchiveNow(new Date()), 60 * 1000);
+    const timer = window.setInterval(() => setArchiveNow(new Date()), 10 * 1000);
     return () => window.clearInterval(timer);
   }, []);
 
@@ -180,7 +181,9 @@ export default function MapView() {
 
       let focusedMarker = null;
 
-      visibleReports.forEach((report) => {
+      const disambiguatedReports = disambiguateReportCoordinates(visibleReports);
+
+      disambiguatedReports.forEach(({ report, displayLat, displayLng }) => {
         const color = getReportStatusColor(report.status);
 
         const icon = L.divIcon({
@@ -191,7 +194,14 @@ export default function MapView() {
           popupAnchor: [0, -44],
         });
 
-        const marker = L.marker([report.latitude, report.longitude], { icon }).addTo(map);
+        const marker = L.marker([displayLat, displayLng], { icon }).addTo(map);
+
+        const remaining = (report.status === 'Resolved' || report.status === 'Rejected')
+          ? getRemainingArchiveTime(report, reportLogs, archiveNow)
+          : null;
+        const timerHtml = remaining && !remaining.isExpired
+          ? `<span class="map-popup-timer" title="Active on map for this remaining time">⏱ ${remaining.text}</span>`
+          : '';
 
         const popupContent = document.createElement('div');
         popupContent.className = 'map-popup-card';
@@ -202,6 +212,7 @@ export default function MapView() {
               <span class="map-popup-badge-dot"></span>
               ${report.status}
             </span>
+            ${timerHtml}
           </div>
           <h4 class="map-popup-title">${report.issue || report.title || 'Drainage Report'}</h4>
           <p class="map-popup-location">
@@ -247,6 +258,7 @@ export default function MapView() {
 
         if (focusReportId && (report.id === focusReportId || report.displayId === focusReportId)) {
           focusedMarker = marker;
+          marker.setZIndexOffset(1000);
         }
       });
 
@@ -264,7 +276,7 @@ export default function MapView() {
     }
 
     syncMarkers();
-  }, [visibleReports, navigate, mapReady, focusReportId]);
+  }, [visibleReports, navigate, mapReady, focusReportId, reportLogs, archiveNow]);
 
   return (
     <div className="map-page-wrapper">

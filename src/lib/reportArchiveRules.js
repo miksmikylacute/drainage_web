@@ -11,10 +11,14 @@ export function isArchiveStatus(status) {
   return ARCHIVE_STATUSES.has(status);
 }
 
+export function isInstantArchiveReport(report) {
+  return isArchiveStatus(report?.status);
+}
+
 export function getReportArchiveEligibleAt(report, reportLogs = []) {
   if (!isArchiveStatus(report?.status)) return null;
 
-  const statusLog = reportLogs
+  const statusLog = (reportLogs || [])
     .filter((log) => log.reportId === report.id && log.newStatus === report.status)
     .map((log) => toValidDate(log.createdAt))
     .filter(Boolean)
@@ -35,4 +39,32 @@ export function isReportArchived(report, reportLogs = [], now = new Date()) {
 
 export function isReportActiveForReportsPage(report, reportLogs = [], now = new Date()) {
   return !isReportArchived(report, reportLogs, now);
+}
+
+export function getRemainingArchiveTime(report, reportLogs = [], now = new Date()) {
+  const eligibleAt = getReportArchiveEligibleAt(report, reportLogs);
+  if (!eligibleAt) return null;
+
+  const diffMs = eligibleAt.getTime() - now.getTime();
+  if (diffMs <= 0) {
+    return {
+      isExpired: true,
+      text: 'Expired',
+      hours: 0,
+      minutes: 0,
+      diffMs: 0
+    };
+  }
+
+  const hours = Math.floor(diffMs / (60 * 60 * 1000));
+  const minutes = Math.floor((diffMs % (60 * 60 * 1000)) / (60 * 1000));
+  const text = hours > 0 ? `${hours}h ${minutes}m left` : `${minutes}m left`;
+
+  return {
+    isExpired: false,
+    text,
+    hours,
+    minutes,
+    diffMs
+  };
 }

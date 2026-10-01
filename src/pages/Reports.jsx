@@ -1,11 +1,11 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { useApp } from '../context/useApp';
-import { Search, X, Edit, ChevronLeft, ChevronRight, Trash2, ExternalLink } from 'lucide-react';
+import { Search, X, Edit, ChevronLeft, ChevronRight, Trash2, ExternalLink, Clock } from 'lucide-react';
 import ConfirmModal from '../components/ConfirmModal';
 import cloggedDrainImg from '../assets/clogged_drain.png';
 import { isReportVisibleOnMap } from '../lib/reportMapMarkers';
-import { isReportActiveForReportsPage } from '../lib/reportArchiveRules';
+import { isReportActiveForReportsPage, getRemainingArchiveTime } from '../lib/reportArchiveRules';
 import { formatReportCoordinates } from '../lib/reportCoordinates';
 import { isReportVideo } from '../lib/reportMedia';
 import '../css/reports.css';
@@ -115,6 +115,19 @@ export default function Reports() {
     setShowImagePopup(false);
   };
 
+  const renderCountdown = (report) => {
+    if (!report || (report.status !== 'Resolved' && report.status !== 'Rejected')) return null;
+    const remaining = getRemainingArchiveTime(report, reportLogs, archiveNow);
+    if (!remaining || remaining.isExpired) return null;
+
+    return (
+      <span className="report-countdown-pill" title={`This report will be archived in ${remaining.text}`}>
+        <Clock size={11} className="countdown-icon" />
+        <span>{remaining.text}</span>
+      </span>
+    );
+  };
+
   const handleSave = (e) => {
     e.preventDefault();
     if (!statusVal) {
@@ -129,12 +142,19 @@ export default function Reports() {
       confirmText: 'Update Report',
       variant: 'primary',
       action: async () => {
-        await updateReportDetails(editingReport.id, statusVal, null, priorityVal || null);
+        const targetReportId = editingReport.id;
+        const targetStatus = statusVal;
+        await updateReportDetails(targetReportId, targetStatus, null, priorityVal || null);
         if (remarks.trim()) {
-          await addReportRemark(editingReport.id, remarks);
+          await addReportRemark(targetReportId, remarks);
           setRemarks('');
         }
         setEditingReport(null);
+
+        // Automatically switch active tab to targetStatus if Resolved or Rejected
+        setActiveTab(targetStatus);
+        setCurrentPage(1);
+        navigate(`/reports?status=${encodeURIComponent(targetStatus)}&focus=${encodeURIComponent(targetReportId)}`);
       },
     });
   };
@@ -367,9 +387,12 @@ export default function Reports() {
                         )}
                       </td>
                       <td className="col-status td-center">
-                        <span className={`status-badge ${report.statusClass}`}>
-                          {report.status}
-                        </span>
+                        <div className="status-cell-wrap">
+                          <span className={`status-badge ${report.statusClass}`}>
+                            {report.status}
+                          </span>
+                          {renderCountdown(report)}
+                        </div>
                       </td>
                       <td className="col-date">
                         <span className="mobile-meta-item">
@@ -461,7 +484,7 @@ export default function Reports() {
                   <span className="report-detail-label">Location</span>
                   <div className="report-location-wrap">
                     <span className="report-detail-value">{currentEditingReport.location}</span>
-                    {isReportVisibleOnMap(currentEditingReport) && (
+                    {isReportVisibleOnMap(currentEditingReport, reportLogs, archiveNow) && (
                       <button
                         type="button"
                         className="location-view-map-btn"
@@ -498,9 +521,12 @@ export default function Reports() {
                 </div>
                 <div className="report-detail-row" style={{ marginBottom: 0 }}>
                   <span className="report-detail-label">Current Status</span>
-                  <span className={`report-detail-value status-${currentEditingReport.statusClass}`}>
-                    {currentEditingReport.status}
-                  </span>
+                  <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                    <span className={`report-detail-value status-${currentEditingReport.statusClass}`}>
+                      {currentEditingReport.status}
+                    </span>
+                    {renderCountdown(currentEditingReport)}
+                  </div>
                 </div>
               </section>
 

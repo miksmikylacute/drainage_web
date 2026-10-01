@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo } from 'react';
+import { useState, useMemo } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { useApp } from '../context/useApp';
 import {
@@ -7,7 +7,7 @@ import {
 import ConfirmModal from '../components/ConfirmModal';
 import cloggedDrainImg from '../assets/clogged_drain.png';
 import { isReportVisibleOnMap } from '../lib/reportMapMarkers';
-import { isReportArchived } from '../lib/reportArchiveRules';
+import { isArchiveStatus } from '../lib/reportArchiveRules';
 import { formatReportCoordinates } from '../lib/reportCoordinates';
 import { isReportVideo } from '../lib/reportMedia';
 import '../css/reports.css';
@@ -79,7 +79,6 @@ export default function ReportArchive() {
   const [statusFilter, setStatusFilter] = useState('All Status');
   const [sortBy, setSortBy] = useState('Newest First');
   const [currentPage, setCurrentPage] = useState(1);
-  const [archiveNow, setArchiveNow] = useState(() => new Date());
 
   // Edit/View Modal State
   const [editingReport, setEditingReport] = useState(null);
@@ -133,11 +132,6 @@ export default function ReportArchive() {
     : [];
   const isSuperAdmin = session?.user?.role === 'super_admin';
 
-  useEffect(() => {
-    const timer = window.setInterval(() => setArchiveNow(new Date()), 60 * 1000);
-    return () => window.clearInterval(timer);
-  }, []);
-
   // Derive available years
   const availableYears = useMemo(() => {
     const dbYears = new Set(
@@ -177,8 +171,8 @@ export default function ReportArchive() {
         if (monthFilter !== 'All Months' || yearFilter !== 'All Years') return false;
       }
 
-      // Only show Resolved and Rejected reports after the 24-hour active window.
-      if (!isReportArchived(report, reportLogs, archiveNow)) return false;
+      // Archive instantly includes all Resolved and Rejected reports.
+      if (!isArchiveStatus(report.status)) return false;
 
       // Status
       if (statusFilter !== 'All Status' && report.status !== statusFilter) return false;
@@ -198,7 +192,7 @@ export default function ReportArchive() {
     });
 
     return result;
-  }, [archiveNow, reportLogs, reports, searchQuery, monthFilter, yearFilter, statusFilter, sortBy]);
+  }, [reports, searchQuery, monthFilter, yearFilter, statusFilter, sortBy]);
 
   const totalPages = Math.max(1, Math.ceil(filteredReports.length / ITEMS_PER_PAGE));
   const safeCurrentPage = Math.min(currentPage, totalPages);
@@ -623,7 +617,7 @@ export default function ReportArchive() {
                   <span className="report-detail-label">Location</span>
                   <div className="report-location-wrap">
                     <span className="report-detail-value">{currentEditingReport.location}</span>
-                    {isReportVisibleOnMap(currentEditingReport) && (
+                    {isReportVisibleOnMap(currentEditingReport, reportLogs) && (
                       <button
                         type="button"
                         className="location-view-map-btn"

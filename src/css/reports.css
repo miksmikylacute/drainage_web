@@ -810,3 +810,30 @@
 .location-view-map-btn:active {
   transform: translateY(0);
 }
+
+/* Countdown Badge for Resolved & Rejected Reports */
+.status-cell-wrap {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+.report-countdown-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  color: #64748b;
+  background-color: #f1f5f9;
+  border: 1px solid #e2e8f0;
+  padding: 2px 8px;
+  border-radius: 9999px;
+  white-space: nowrap;
+  letter-spacing: 0.01em;
+}
+
+.report-countdown-pill .countdown-icon {
+  color: #0284c7;
+}
