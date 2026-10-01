@@ -7,6 +7,13 @@ import '../css/residents.css';
 
 const ITEMS_PER_PAGE = 10;
 
+function formatRole(role) {
+  if (role === 'super_admin') return 'Super Admin';
+  if (role === 'admin') return 'Admin';
+  if (role === 'resident') return 'User';
+  return role || 'User';
+}
+
 export default function Residents() {
   const {
     residents,
@@ -373,16 +380,16 @@ export default function Residents() {
 
       <div className="card table-card">
         <div className="table-container">
-          <table className="custom-table">
+          <table className="custom-table residents-table">
             <thead>
               <tr>
-                <th>Name</th>
-                <th>Contact Number</th>
-                <th>Email</th>
-                <th>Valid ID</th>
-                <th>Role</th>
-                <th>Status</th>
-                <th style={{ textAlign: 'right' }}>Actions</th>
+                <th className="th-user-name">Name</th>
+                <th className="th-user-contact">Contact Number</th>
+                <th className="th-user-email">Email</th>
+                <th className="th-user-id">Valid ID</th>
+                <th className="th-user-role">Role</th>
+                <th className="th-user-status">Status</th>
+                <th className="th-user-actions" style={{ textAlign: 'right' }}>Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -428,7 +435,7 @@ export default function Residents() {
                     </td>
                     <td className="col-user-role">
                       <span className={`role-badge ${user.role}`}>
-                        {user.role === 'super_admin' ? 'Super Admin' : user.role}
+                        {formatRole(user.role)}
                       </span>
                     </td>
                     <td className="col-user-status">
@@ -438,7 +445,7 @@ export default function Residents() {
                       </span>
                     </td>
                     <td className="col-user-actions" style={{ textAlign: 'right' }}>
-                      <div className="residents-actions-wrap" style={{ display: 'inline-flex', gap: '6px', justifyContent: 'flex-end', alignItems: 'center' }}>
+                      <div className="residents-actions-wrap" style={{ display: 'inline-flex', gap: '6px', justifyContent: 'flex-end', alignItems: 'center', whiteSpace: 'nowrap', flexWrap: 'nowrap' }}>
                         {user.status === 'Pending' ? (
                           <>
                             <button
@@ -551,7 +558,7 @@ export default function Residents() {
                     value={role}
                     onChange={(e) => setRole(e.target.value)}
                   >
-                    <option value="resident">Resident</option>
+                    <option value="resident">User</option>
                     <option value="admin">Admin</option>
                   </select>
                 </div>
@@ -682,7 +689,7 @@ export default function Residents() {
                   Cancel
                 </button>
                 <button type="submit" className="btn-primary" disabled={isSaving}>
-                  {isSaving ? 'Creating...' : `Create ${role === 'admin' ? 'Admin' : 'Resident'}`}
+                  {isSaving ? 'Creating...' : `Create ${role === 'admin' ? 'Admin' : 'User'}`}
                 </button>
               </div>
             </form>
@@ -715,7 +722,7 @@ export default function Residents() {
               </div>
               <h3 style={{ fontSize: '20px', fontWeight: '700', color: 'var(--text-dark)', margin: '0' }}>{activeInspectionUser.name}</h3>
               <span className={`role-badge ${activeInspectionUser.role}`} style={{ alignSelf: 'center' }}>
-                {activeInspectionUser.role === 'super_admin' ? 'Super Admin' : activeInspectionUser.role}
+                {formatRole(activeInspectionUser.role)}
               </span>
             </div>
 
