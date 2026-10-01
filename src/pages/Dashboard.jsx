@@ -13,7 +13,8 @@ import {
   MAUBAN_CENTER,
   REPORT_STATUS_LEGEND,
 } from '../lib/reportMapMarkers';
-import { isReportActiveForReportsPage } from '../lib/reportArchiveRules';
+import { isReportActiveForReportsPage, getRemainingArchiveTime } from '../lib/reportArchiveRules';
+import { disambiguateReportCoordinates } from '../lib/reportCoordinates';
 import '../css/dashboard.css';
 
 const STATUS_LINE_SERIES = [
@@ -551,7 +552,9 @@ function DashboardMiniMap({ reports, reportLogs }) {
         isReportVisibleOnMap(r, reportLogs || [], archiveNow)
       );
 
-      geoReports.forEach((report) => {
+      const disambiguatedReports = disambiguateReportCoordinates(geoReports);
+
+      disambiguatedReports.forEach(({ report, displayLat, displayLng }) => {
         const icon = L.divIcon({
           html: buildReportMarkerSvg(getReportStatusColor(report.status), 'small'),
           className: 'map-custom-icon',
@@ -560,8 +563,13 @@ function DashboardMiniMap({ reports, reportLogs }) {
           popupAnchor: [0, -34],
         });
 
-        const marker = L.marker([report.latitude, report.longitude], { icon }).addTo(map);
-        marker.bindTooltip(report.issue || 'Drainage Issue');
+        const remaining = (report.status === 'Resolved' || report.status === 'Rejected')
+          ? getRemainingArchiveTime(report, reportLogs || [], archiveNow)
+          : null;
+        const tooltipText = (report.issue || 'Drainage Issue') + (remaining && !remaining.isExpired ? ` (${remaining.text})` : '');
+
+        const marker = L.marker([displayLat, displayLng], { icon }).addTo(map);
+        marker.bindTooltip(tooltipText);
         markersRef.current.push(marker);
       });
 

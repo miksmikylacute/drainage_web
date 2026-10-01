@@ -325,6 +325,20 @@
   padding-right: 24px; /* Space for close button */
 }
 
+.map-popup-timer {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 10px;
+  font-weight: 600;
+  color: #475569;
+  background-color: #f1f5f9;
+  border: 1px solid #cbd5e1;
+  padding: 2px 7px;
+  border-radius: 9999px;
+  white-space: nowrap;
+}
+
 /* Status Pill Badge */
 .map-popup-badge,
 .lf-status {

@@ -695,6 +695,7 @@ export function AppProvider({ children }) {
     if (updateError) throw updateError;
 
     const updatedStatus = data?.status || newStatus;
+    const nowIso = new Date().toISOString();
 
     setReports((prevReports) =>
       prevReports.map((report) =>
@@ -704,13 +705,28 @@ export function AppProvider({ children }) {
               status: updatedStatus,
               statusClass: statusClass(updatedStatus),
               remarks: newRemarks,
-              priority: priority !== undefined ? priority : report.priority
+              priority: priority !== undefined ? priority : report.priority,
+              updatedAt: nowIso
             }
           : report
       )
     );
-    await loadReports();
-    await loadReportLogs();
+
+    setReportLogs((prevLogs) => [
+      {
+        id: `optimistic-${Date.now()}`,
+        reportId: id,
+        oldStatus: null,
+        newStatus: updatedStatus,
+        remarks: newRemarks || '',
+        changedBy: session?.user?.id || '',
+        createdAt: nowIso,
+        createdAtLabel: formatDate(nowIso)
+      },
+      ...prevLogs
+    ]);
+
+    await Promise.all([loadReports(), loadReportLogs()]);
   };
 
   const markAdminNotificationRead = async (id) => {
