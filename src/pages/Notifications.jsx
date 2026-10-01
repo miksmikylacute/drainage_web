@@ -21,7 +21,7 @@ export default function Notifications() {
     cancelText: 'Cancel',
     variant: 'primary',
     isProcessing: false,
-    onConfirm: () => {},
+    onConfirm: () => { },
   });
 
   const confirmAction = ({ title, message, confirmText = 'Confirm', variant = 'primary', action }) => {
@@ -111,7 +111,7 @@ export default function Notifications() {
 
     const count = selectedResidents.length;
     confirmAction({
-      title: 'Confirm Broadcast Notification',
+      title: 'Confirm Sending Notification',
       message: `Are you sure you want to send this notification to ${count} selected resident${count > 1 ? 's' : ''}?`,
       confirmText: 'Send Notification',
       variant: 'primary',
@@ -138,7 +138,7 @@ export default function Notifications() {
       <div style={{ maxWidth: '800px', margin: '0 auto' }}>
         {/* Gray form panel */}
         <div className="send-notif-form-box">
-          
+
           {/* Search Input Group */}
           <div className="send-notif-input-wrapper">
             <div className="search-input-wrapper" style={{ width: '100%' }}>
@@ -166,8 +166,8 @@ export default function Notifications() {
             {showSuggestions && suggestions.length > 0 && (
               <div className="search-suggestions">
                 {suggestions.map((res) => (
-                  <div 
-                    key={res.id} 
+                  <div
+                    key={res.id}
                     className="suggestion-item"
                     onClick={() => handleSelectResident(res)}
                   >
@@ -214,8 +214,8 @@ export default function Notifications() {
                 selectedResidents.map((res) => (
                   <div key={res.id} className="to-tag">
                     <span>{res.name}</span>
-                    <button 
-                      type="button" 
+                    <button
+                      type="button"
                       className="to-tag-remove"
                       onClick={() => handleRemoveResident(res.id)}
                     >
@@ -246,17 +246,17 @@ export default function Notifications() {
 
         {/* Form Actions (placed outside of gray box) */}
         <div className="notif-btn-row">
-          <button 
-            type="button" 
+          <button
+            type="button"
             className="btn-cancel-notif"
             onClick={handleCancel}
             disabled={sending}
           >
             Cancel
           </button>
-          
-          <button 
-            type="button" 
+
+          <button
+            type="button"
             className="btn-send-notif"
             onClick={handleSend}
             disabled={sending}
