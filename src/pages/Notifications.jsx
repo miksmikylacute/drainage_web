@@ -111,7 +111,7 @@ export default function Notifications() {
 
     const count = selectedResidents.length;
     confirmAction({
-      title: 'Confirm Sending Notification',
+      title: 'Confirm Sending Notification ',
       message: `Are you sure you want to send this notification to ${count} selected resident${count > 1 ? 's' : ''}?`,
       confirmText: 'Send Notification',
       variant: 'primary',
