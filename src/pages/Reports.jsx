@@ -719,7 +719,6 @@ export default function Reports() {
                 <div className="image-popup-header">
                   <div>
                     <h3>Report Image</h3>
-                    <p>{currentEditingReport.displayId}</p>
                   </div>
                   <button
                     type="button"
